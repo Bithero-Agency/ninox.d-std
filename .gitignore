@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/ministd
+ministd.so
+ministd.dylib
+ministd.dll
+ministd.a
+ministd.lib
+ministd-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst

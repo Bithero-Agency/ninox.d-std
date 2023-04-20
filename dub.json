@@ -1,0 +1,12 @@
+{
+	"authors": [
+		"Mai-Lapyst"
+	],
+	"copyright": "Copyright © 2023, Mai-Lapyst",
+	"description": "A set of utilities",
+	"license": "AGPL-3.0-or-later",
+	"name": "ministd",
+	"subPackages": [
+		"./packages/optional"
+	]
+}

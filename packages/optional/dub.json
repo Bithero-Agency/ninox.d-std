@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"Mai-Lapyst"
+	],
+	"copyright": "Copyright © 2023, Mai-Lapyst",
+	"description": "Optionals in dlang",
+	"license": "AGPL-3.0-or-later",
+	"name": "optional"
+}
