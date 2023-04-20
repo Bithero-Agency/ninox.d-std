@@ -31,6 +31,9 @@ class OptionalIsNoneException : Exception {
     }
 }
 
+/// ditto
+alias OptionIsNoneException = OptionalIsNoneException;
+
 /// An optional of type `T`
 struct Optional(T) {
     private T value;
@@ -103,3 +106,6 @@ struct Optional(T) {
         return Optional(value);
     }
 }
+
+/// ditto
+alias Option = Optional;
