@@ -109,3 +109,22 @@ struct Optional(T) {
 
 /// ditto
 alias Option = Optional;
+
+unittest {
+    Optional!int maybe_int = Optional!int.none();
+    try {
+        maybe_int.take();
+        assert(0, "Optional.take() should throw a OptionalIsNoneException if it is a None");
+    } catch (OptionalIsNoneException) {}
+}
+
+unittest {
+    Optional!int maybe_int = Optional!int.some(42);
+    try {
+        auto i = maybe_int.take();
+        assert(i == 42, "Optional.take() should return the value hold by the Some");
+        assert(maybe_int.isNone(), "Optional should be a None after call to Optional.take()");
+    } catch (OptionalIsNoneException) {
+        assert(0, "Optional.take() should not throw a OptionalIsNoneException if it is a Some");
+    }
+}
