@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/ministd-callable
+ministd-callable.so
+ministd-callable.dylib
+ministd-callable.dll
+ministd-callable.a
+ministd-callable.lib
+ministd-callable-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
