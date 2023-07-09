@@ -9,3 +9,4 @@ The code in this repository is licensed under AGPL-3.0-or-later; for more detail
 ## Packages
 
 - `optional`: Optionals in dlang; `Optional!int.some(42)` or `Optional!int.none()`.
+- `callable`: Wrapper struct to hold any function / delgate with ease
