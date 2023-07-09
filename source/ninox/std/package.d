@@ -16,10 +16,10 @@
  */
 
 /** 
- * Main module for ministd.
+ * Main module for ninox.std.
  * 
  * License:   $(HTTP https://www.gnu.org/licenses/agpl-3.0.html, AGPL 3.0).
  * Copyright: Copyright (C) 2023 Mai-Lapyst
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
-module ministd;
+module ninox.std;

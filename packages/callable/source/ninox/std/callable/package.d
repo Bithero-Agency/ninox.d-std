@@ -22,7 +22,7 @@
  * Copyright: Copyright (C) 2023 Mai-Lapyst
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
-module ministd.callable;
+module ninox.std.callable;
 
 /// A struct that makes holding any function and/or delegate a breeze!
 struct Callable(RetT, ParamsT...) {

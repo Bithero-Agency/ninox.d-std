@@ -1,4 +1,4 @@
-# Ministd
+# ninox-d_std
 
 A set of utilities, packaged nicely into subpackages
 

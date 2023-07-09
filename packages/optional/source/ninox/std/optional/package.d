@@ -22,7 +22,7 @@
  * Copyright: Copyright (C) 2023 Mai-Lapyst
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
-module ministd.optional;
+module ninox.std.optional;
 
 /// Exception when an Optional is None but a operation that assumes an Some was executed
 class OptionalIsNoneException : Exception {
