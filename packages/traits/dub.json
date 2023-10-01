@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"Mai-Lapyst"
+	],
+	"copyright": "Copyright © 2023, Mai-Lapyst",
+	"description": "Some helpfull traits & templates to aid development",
+	"license": "AGPL-3.0-or-later",
+	"name": "traits"
+}

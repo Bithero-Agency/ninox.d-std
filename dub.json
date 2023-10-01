@@ -8,6 +8,7 @@
 	"name": "ninox-d_std",
 	"subPackages": [
 		"./packages/optional",
-		"./packages/callable"
+		"./packages/callable",
+		"./packages/traits"
 	]
 }
