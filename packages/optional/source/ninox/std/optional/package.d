@@ -177,6 +177,22 @@ struct Optional(T) {
     // ================================================================================
 
     /** 
+     * Returns a None of `U` when this is a None, otherwise returns `opt`.
+     * 
+     * Params:
+     *   opt = value to return when this is a Some
+     * 
+     * Returns: The given optional if this is a Some; A new None of `U` otherwise
+     */
+    Optional!U and(U)(Optional!U opt) {
+        if (_isSome) {
+            return opt;
+        } else {
+            return Optional!U.none();
+        }
+    }
+
+    /** 
      * If this is a some, the given callable `f` is called and it's
      * return (another optional of `U`) is returned.
      * 
@@ -321,6 +337,21 @@ unittest {
         }
     );
     assert(str == "42");
+}
+
+// Optional.and()
+
+unittest {
+    Optional!int maybe_int = Optional!int.none();
+    Optional!string maybe_str = maybe_int.and(Optional!string.some("hello"));
+    assert(maybe_str.isNone());
+}
+
+unittest {
+    Optional!int maybe_int = Optional!int.some(42);
+    Optional!string maybe_str = maybe_int.and(Optional!string.some("hello"));
+    assert(maybe_str.isSome());
+    assert(maybe_str.take() == "hello");
 }
 
 // Optional.and_then()
