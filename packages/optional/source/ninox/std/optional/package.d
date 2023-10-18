@@ -88,16 +88,27 @@ struct Optional(T) {
         return _isSome;
     }
 
-    /// Maps this optional to another optional of `U`
-    /// 
-    /// Parameter `f` needs to be a callable that accepts one parameter: `T`,
-    /// and produces one return `U`.
-    /// 
-    /// If this optional is a Some, then the function is called with the current value,
-    /// and the return is wrapped into a new Some of the destination type before returned
-    /// from this function as well.
-    /// 
-    /// If this optional is a None, a none of the destination type is returned.
+    // ================================================================================
+    //  Transforming
+    // ================================================================================
+
+    /** 
+     * Maps this optional to another optional of `U`
+     * 
+     * Parameter `f` needs to be a callable that accepts one parameter: `T`,
+     * and produces one return `U`.
+     * 
+     * If this optional is a Some, then the function is called with the current value,
+     * and the return is wrapped into a new Some of the destination type before returned
+     * from this function as well.
+     * 
+     * If this optional is a None, a none of the destination type is returned.
+     * 
+     * Params:
+     *  f = the callable used to map the value
+     * 
+     * Returns: A new optional with the mapped value, or None if this is a None as well.
+     */
     Optional!U map(F, U = ReturnType!F)(F f)
     if (isCallable!F && is(Parameters!F == AliasSeq!(T)))
     {
@@ -108,15 +119,24 @@ struct Optional(T) {
         }
     }
 
-    /// Maps the optional to a value of `U`.
-    /// 
-    /// Parameter `f` needs to be a callable that accepts one parameter: `T`,
-    /// and produces one return `U`.
-    /// 
-    /// If this optional is a Some, then the function is called with the current value,
-    /// and the return is used.
-    /// 
-    /// If this optional is a None, the value of `_default` is returned instead.
+    /**
+     * Maps the optional to a value of `U`.
+     * 
+     * Parameter `f` needs to be a callable that accepts one parameter: `T`,
+     * and produces one return `U`.
+     * 
+     * If this optional is a Some, then the function is called with the current value,
+     * and the return is used.
+     * 
+     * If this optional is a None, the value of `_default` is returned instead.
+     * 
+     * Params:
+     *  _default = default value to use when this is a None
+     *  f = callable to map the contained value if this is a Some
+     * 
+     * Returns: A value that was either mapped when this is a Some,
+     *          or the `_default` if this is a None.
+     */
     U map_or(F, U = ReturnType!F)(U _default, F f)
     if (isCallable!F && is(Parameters!F == AliasSeq!(T)))
     {
@@ -127,8 +147,17 @@ struct Optional(T) {
         }
     }
 
-    /// Like `map_or`, but instead of using a default value, it accepts
-    /// an callable that returns the default value.
+    /**
+     * Like `map_or`, but instead of using a default value, it accepts
+     * an callable that returns the default value.
+     * 
+     * Params:
+     *  _default = callable to retrieve the default value when this is a None
+     *  f = callable to map the contained value if this is a Some
+     * 
+     * Returns: A value that was either mapped when this is a Some,
+     *          or the return value of `_default` if this is a None.
+     */
     auto map_or_else(F, D)(D _default, F f)
     if (
         isCallable!F && is(Parameters!F == AliasSeq!(T))
@@ -142,6 +171,10 @@ struct Optional(T) {
             return _default();
         }
     }
+
+    // ================================================================================
+    //  Boolean operations
+    // ================================================================================
 
     /// If this is a some, the given callable `f` is called and it's
     /// return (another optional of `U`) is returned.
@@ -160,6 +193,10 @@ struct Optional(T) {
             }
         }
     }
+
+    // ================================================================================
+    //  Creation
+    // ================================================================================
 
     /**
      * Creates a None
