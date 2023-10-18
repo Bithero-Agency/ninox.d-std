@@ -108,6 +108,27 @@ struct Optional(T) {
         }
     }
 
+    /// Maps the optional to another optional of `U`, with a default value.
+    /// 
+    /// Parameter `f` needs to be a callable that accepts one parameter: `T`,
+    /// and produces one return `U`.
+    /// 
+    /// If this optional is a Some, then the function is called with the current value,
+    /// and the return is wrapped into a new Some of the destination type before returned
+    /// from this function as well.
+    /// 
+    /// If this optional is a None, a some of the destination type with the value of `_default`
+    /// is returned instead.
+    Optional!U map_or(F, U = ReturnType!F)(U _default, F f)
+    if (isCallable!F && is(Parameters!F == AliasSeq!(T)))
+    {
+        if (_isSome) {
+            return Optional!U.some(f(value));
+        } else {
+            return Optional!U.some(_default);
+        }
+    }
+
     /// If this is a some, the given callable `f` is called and it's
     /// return (another optional of `U`) is returned.
     /// 
@@ -185,6 +206,26 @@ unittest {
 unittest {
     Optional!int maybe_int = Optional!int.some(42);
     Optional!string maybe_str = maybe_int.map((int i) {
+        import std.conv : to;
+        return to!string(i);
+    });
+    assert(maybe_str.isSome());
+    assert(maybe_str.take() == "42");
+}
+
+unittest {
+    Optional!int maybe_int = Optional!int.none();
+    Optional!string maybe_str = maybe_int.map_or("empty", (int i) {
+        import std.conv : to;
+        return to!string(i);
+    });
+    assert(maybe_str.isSome());
+    assert(maybe_str.take() == "empty");
+}
+
+unittest {
+    Optional!int maybe_int = Optional!int.some(42);
+    Optional!string maybe_str = maybe_int.map_or("empty", (int i) {
         import std.conv : to;
         return to!string(i);
     });
