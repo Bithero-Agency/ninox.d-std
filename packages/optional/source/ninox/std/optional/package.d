@@ -24,7 +24,7 @@
  */
 module ninox.std.optional;
 
-import std.traits : isCallable, Parameters;
+import std.traits : isCallable, Parameters, ReturnType;
 
 /// Exception when an Optional is None but a operation that assumes an Some was executed
 class OptionalIsNoneException : Exception {
@@ -107,6 +107,20 @@ struct Optional(T) {
         }
     }
 
+    /// If this is a some, the given callable `f` is called and it's
+    /// return (another optional of `U`) is returned.
+    /// 
+    /// If this is a none, a new none of the type `U` is returned instead.
+    Optional!U and_then(U, F)(F f)
+    if (isCallable!F && is(Parameters!f == T) && is(ReturnType!f == Optional!U))
+    {
+        if (_isSome) {
+            return f(value);
+        } else {
+            return Optional!U.none();
+        }
+    }
+
     /**
      * Creates a None
      * 
@@ -165,6 +179,25 @@ unittest {
     Optional!string maybe_str = maybe_int.map((int i) {
         import std.conv : to;
         return to!string(i);
+    });
+    assert(maybe_str.isSome());
+    assert(maybe_str.take() == "42");
+}
+
+unittest {
+    Optional!int maybe_int = Optional!int.none();
+    Optional!string maybe_str = maybe_int.and_then((int i) {
+        import std.conv : to;
+        return Optional!string.some(to!string(i));
+    });
+    assert(maybe_str.isNone());
+}
+
+unittest {
+    Optional!int maybe_int = Optional!int.some(42);
+    Optional!string maybe_str = maybe_int.and_then((int i) {
+        import std.conv : to;
+        return Optional!string.some(to!string(i));
     });
     assert(maybe_str.isSome());
     assert(maybe_str.take() == "42");
