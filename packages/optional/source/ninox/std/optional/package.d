@@ -193,15 +193,13 @@ struct Optional(T) {
     }
 
     /** 
-     * If this is a some, the given callable `f` is called and it's
-     * return (another optional of `U`) is returned.
-     * 
-     * If this is a none, a new none of the type `U` is returned instead.
+     * Returns a None of `U` when this is a None, otherwise calls `f` with the
+     * current value and returns the result.
      * 
      * Params:
      *   f = callable to run when this is a Some
      * 
-     * Returns: The returnvalue of `f` if this is a Some; A new None of `U` otherwise
+     * Returns: The result of `f` if this is a Some; A None of `U` otherwise
      */
     R and_then(F, R = ReturnType!F)(F f)
     if (isCallable!F && is(Parameters!F == AliasSeq!(T)) && is(R == Optional!U, U))
