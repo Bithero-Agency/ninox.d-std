@@ -25,6 +25,7 @@
 module ninox.std.optional;
 
 import std.traits : isCallable, Parameters, ReturnType, isInstanceOf;
+import std.meta : AliasSeq;
 
 /// Exception when an Optional is None but a operation that assumes an Some was executed
 class OptionalIsNoneException : Exception {
@@ -97,8 +98,8 @@ struct Optional(T) {
     /// from this function as well.
     /// 
     /// If this optional is a None, a none of the destination type is returned.
-    Optional!U map(U, F)(F f)
-    if (isCallable!F && is(Parameters!f == T))
+    Optional!U map(F, U = ReturnType!F)(F f)
+    if (isCallable!F && is(Parameters!F == AliasSeq!(T)))
     {
         if (_isSome) {
             return Optional!U.some(f(value));
