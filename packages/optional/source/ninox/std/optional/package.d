@@ -127,6 +127,22 @@ struct Optional(T) {
         }
     }
 
+    /// Like `map_or`, but instead of using a default value, it accepts
+    /// an callable that returns the default value.
+    auto map_or_else(F, D)(D _default, F f)
+    if (
+        isCallable!F && is(Parameters!F == AliasSeq!(T))
+        && isCallable!D && is(Parameters!D == AliasSeq!())
+        && is(ReturnType!F == ReturnType!D)
+    )
+    {
+        if (_isSome) {
+            return f(value);
+        } else {
+            return _default();
+        }
+    }
+
     /// If this is a some, the given callable `f` is called and it's
     /// return (another optional of `U`) is returned.
     /// 
@@ -226,6 +242,30 @@ unittest {
         import std.conv : to;
         return to!string(i);
     });
+    assert(str == "42");
+}
+
+unittest {
+    Optional!int maybe_int = Optional!int.none();
+    string str = maybe_int.map_or_else(
+        () { return "empty";},
+        (int i) {
+            import std.conv : to;
+            return to!string(i);
+        }
+    );
+    assert(str== "empty");
+}
+
+unittest {
+    Optional!int maybe_int = Optional!int.some(42);
+    string str = maybe_int.map_or_else(
+        () { return "empty";},
+        (int i) {
+            import std.conv : to;
+            return to!string(i);
+        }
+    );
     assert(str == "42");
 }
 
