@@ -189,6 +189,10 @@ alias Option = Optional;
 /// Returns true if `T` is a `Optional`
 enum isOptional(T) = isInstanceOf!(Optional, T);
 
+// ================================================================================
+
+// Optional.take()
+
 unittest {
     Optional!int maybe_int = Optional!int.none();
     try {
@@ -208,6 +212,8 @@ unittest {
     }
 }
 
+// Optional.map()
+
 unittest {
     Optional!int maybe_int = Optional!int.none();
     Optional!string maybe_str = maybe_int.map((int i) {
@@ -227,6 +233,8 @@ unittest {
     assert(maybe_str.take() == "42");
 }
 
+// Optional.map_or()
+
 unittest {
     Optional!int maybe_int = Optional!int.none();
     string str = maybe_int.map_or("empty", (int i) {
@@ -244,6 +252,8 @@ unittest {
     });
     assert(str == "42");
 }
+
+// Optional.map_or_else()
 
 unittest {
     Optional!int maybe_int = Optional!int.none();
@@ -269,6 +279,8 @@ unittest {
     assert(str == "42");
 }
 
+// Optional.and_then()
+
 unittest {
     Optional!int maybe_int = Optional!int.none();
     Optional!string maybe_str = maybe_int.and_then((int i) {
@@ -287,6 +299,8 @@ unittest {
     assert(maybe_str.isSome());
     assert(maybe_str.take() == "42");
 }
+
+// isOptional()
 
 unittest {
     alias MaybeInt = Optional!int;
