@@ -78,6 +78,28 @@ struct Optional(T) {
         return value;
     }
 
+    /** 
+     * Replaces the current value of this option with the value given,
+     * returning the old value if present and leaving a Some in its place.
+     * 
+     * Params:
+     *   value = the value to replace this with
+     * 
+     * Returns: The old value, wrapped inside a Optional.
+     */
+    Optional!T replace(T value) {
+        if (this._isSome) {
+            T oldValue = this.value;
+            this.value = value;
+            return Optional!T.some(oldValue);
+        }
+        else {
+            this._isSome = true;
+            this.value = value;
+            return Optional!T.none();
+        }
+    }
+
     /// Returns true if the optional is a None; false otherwise
     bool isNone() {
         return !_isSome;
@@ -268,6 +290,25 @@ unittest {
     } catch (OptionalIsNoneException) {
         assert(0, "Optional.take() should not throw a OptionalIsNoneException if it is a Some");
     }
+}
+
+// Optional.replace()
+
+unittest {
+    Optional!int maybe_int = Optional!int.none();
+    Optional!int old_maybe = maybe_int.replace(42);
+    assert(maybe_int.isSome(), "Optional.replace() should convert the instance to a Some");
+    assert(maybe_int.get() == 42, "Optional.replace() should set the value to the one given to it");
+    assert(old_maybe.isNone(), "Optional.replace() should return the old value (a None)");
+}
+
+unittest {
+    Optional!int maybe_int = Optional!int.some(42);
+    Optional!int old_maybe = maybe_int.replace(99);
+    assert(maybe_int.isSome(), "Optional.replace() should let the instance remain a Some");
+    assert(maybe_int.get() == 99, "Optional.replace() should set the value to the one given to it");
+    assert(old_maybe.isSome(), "Optional.replace() should return the old value (a Some)");
+    assert(old_maybe.get() == 42, "Optional.replace() should return the old value");
 }
 
 // Optional.map()
