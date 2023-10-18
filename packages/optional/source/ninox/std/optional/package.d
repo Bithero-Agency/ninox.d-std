@@ -24,7 +24,7 @@
  */
 module ninox.std.optional;
 
-import std.traits : isCallable, Parameters, ReturnType;
+import std.traits : isCallable, Parameters, ReturnType, isInstanceOf;
 
 /// Exception when an Optional is None but a operation that assumes an Some was executed
 class OptionalIsNoneException : Exception {
@@ -146,6 +146,9 @@ struct Optional(T) {
 /// ditto
 alias Option = Optional;
 
+/// Returns true if `T` is a `Optional`
+enum isOptional(T) = isInstanceOf!(Optional, T);
+
 unittest {
     Optional!int maybe_int = Optional!int.none();
     try {
@@ -201,4 +204,10 @@ unittest {
     });
     assert(maybe_str.isSome());
     assert(maybe_str.take() == "42");
+}
+
+unittest {
+    alias MaybeInt = Optional!int;
+    assert(isOptional!(MaybeInt) == true);
+    assert(isOptional!(int) == false);
 }
