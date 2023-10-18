@@ -112,13 +112,17 @@ struct Optional(T) {
     /// return (another optional of `U`) is returned.
     /// 
     /// If this is a none, a new none of the type `U` is returned instead.
-    Optional!U and_then(U, F)(F f)
-    if (isCallable!F && is(Parameters!f == T) && is(ReturnType!f == Optional!U))
+    R and_then(F, R = ReturnType!F)(F f)
+    if (isCallable!F && is(Parameters!F == AliasSeq!(T)) && is(R == Optional!U, U))
     {
         if (_isSome) {
             return f(value);
         } else {
-            return Optional!U.none();
+            static if (is(R == Optional!U, U)) {
+                return Optional!U.none();
+            } else {
+                static assert(0, "Should not happen!");
+            }
         }
     }
 
