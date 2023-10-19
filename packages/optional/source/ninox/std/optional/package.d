@@ -39,7 +39,27 @@ alias OptionIsNoneException = OptionalIsNoneException;
 
 /// An optional of type `T`
 struct Optional(T) {
-    private T value;
+    static if (is(T == struct)) {
+        // structs are a bit more complicated for Optionals...
+        // When we use the default way with a `T value;` field, our constructor
+        // will call `T`'s constructor even if we're a None!
+        // 
+        // This will prevent that by embedding the data as a static array `__data`
+        // of the size of `T`.
+        private void[T.sizeof] __data;
+
+        // Property so the rest of the code can still use `this.value`.
+        // We also only need the "getter", since we return `ref T` here, so assigning
+        // to it via `this.value = X` will still update `__data`!
+        private @property ref T value() {
+            // One could think that casting to `T*` and derefing would give us only a `T`
+            // which isn't what we want, but like other compilers, Dlang does the right thing
+            // here and effectivly uses the `T*` for `ref T`, which is what we want anyway!
+            return *(cast(T*) __data.ptr);
+        }
+    } else {
+        private T value;
+    }
     private bool _isSome = false;
 
     this(T value, bool isSome) @disable;
@@ -67,11 +87,11 @@ struct Optional(T) {
     /** 
      * Gets the value of the optional but leaving it as it.
      * 
-     * Returns: the value the optional holds
+     * Returns: the value the optional holds as `ref` so `struct`'s can be manipulated too
      * 
      * Throws: $(REF OptionalIsNoneException) if the optional is a None instead of a Some
      */
-    T get() {
+    ref T get() {
         if (!_isSome) {
             throw new OptionalIsNoneException(.stringof, ".take()");
         }
