@@ -51,7 +51,7 @@ struct Optional(T) {
         // Property so the rest of the code can still use `this.value`.
         // We also only need the "getter", since we return `ref T` here, so assigning
         // to it via `this.value = X` will still update `__data`!
-        private @property ref T value() {
+        private @property ref T value() const @trusted pure nothrow {
             // One could think that casting to `T*` and derefing would give us only a `T`
             // which isn't what we want, but like other compilers, Dlang does the right thing
             // here and effectivly uses the `T*` for `ref T`, which is what we want anyway!
