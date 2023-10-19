@@ -93,7 +93,7 @@ struct Optional(T) {
      */
     ref T get() {
         if (!_isSome) {
-            throw new OptionalIsNoneException(.stringof, ".take()");
+            throw new OptionalIsNoneException(.stringof, ".get()");
         }
         return value;
     }
