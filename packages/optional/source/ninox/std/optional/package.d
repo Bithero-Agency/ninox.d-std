@@ -130,6 +130,16 @@ struct Optional(T) {
         return _isSome;
     }
 
+    /// Converts the optional into a string representation
+    string toString() const @safe pure {
+        if (_isSome) {
+            import std.conv : to;
+            return "Optional!" ~ T.stringof ~ ".some(" ~ to!string(this.value) ~ ")";
+        } else {
+            return "Optional!" ~ T.stringof ~ ".none()";
+        }
+    }
+
     // ================================================================================
     //  Transforming
     // ================================================================================
@@ -290,6 +300,17 @@ alias Option = Optional;
 enum isOptional(T) = isInstanceOf!(Optional, T);
 
 // ================================================================================
+
+// Optional.toString()
+
+unittest {
+    import std.conv : to;
+    string t1 = to!string( Optional!int.some(42) );
+    string t2 = to!string( Optional!int.none() );
+
+    assert(t1 == "Optional!int.some(42)");
+    assert(t2 == "Optional!int.none()");
+}
 
 // Optional.take()
 
