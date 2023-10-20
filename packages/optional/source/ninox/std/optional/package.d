@@ -91,7 +91,7 @@ struct Optional(T) {
      * 
      * Throws: $(REF OptionalIsNoneException) if the optional is a None instead of a Some
      */
-    ref T get() {
+    ref T get() const {
         if (!_isSome) {
             throw new OptionalIsNoneException(.stringof, ".get()");
         }
@@ -121,12 +121,12 @@ struct Optional(T) {
     }
 
     /// Returns true if the optional is a None; false otherwise
-    bool isNone() {
+    bool isNone() const {
         return !_isSome;
     }
 
     /// Returns true if the optional is a Some; false otherwise
-    bool isSome() {
+    bool isSome() const {
         return _isSome;
     }
 
