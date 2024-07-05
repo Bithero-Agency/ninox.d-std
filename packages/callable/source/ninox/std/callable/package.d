@@ -43,6 +43,18 @@ struct Callable(RetT, ParamsT...) {
         }
     }
 
+    auto opAssign(RetT function(ParamsT) fn) {
+        this.kind = Kind.FN;
+        this.fn = fn;
+        return this;
+    }
+
+    auto opAssign(RetT delegate(ParamsT) dg) {
+        this.kind = Kind.DG;
+        this.dg = dg;
+        return this;
+    }
+
 private:
     enum Kind { NO, FN, DG }
     Kind kind = Kind.NO;
@@ -55,4 +67,14 @@ private:
 unittest {
     auto adder = Callable!(int, int, int)( (int a, int b) => a + b );
     assert( adder(12, 34) == (12 + 34) );
+
+    adder = (int a, int b) => a - b;
+    assert( adder(22, 10) == 12 );
+
+    int mul(int a, int b) {
+        return a * b;
+    }
+
+    adder = &mul;
+    assert( adder(2, 20) == 40 );
 }
