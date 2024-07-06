@@ -43,15 +43,15 @@ struct Callable(RetT, ParamsT...) {
         }
     }
 
-    auto opAssign(RetT function(ParamsT) fn) {
+    auto opAssign(RetT function(ParamsT) fn) pure nothrow @nogc @safe {
+        () @trusted { this.fn = fn; }();
         this.kind = Kind.FN;
-        this.fn = fn;
         return this;
     }
 
-    auto opAssign(RetT delegate(ParamsT) dg) {
+    auto opAssign(RetT delegate(ParamsT) dg) pure nothrow @nogc @safe {
+        () @trusted { this.dg = dg; }();
         this.kind = Kind.DG;
-        this.dg = dg;
         return this;
     }
 
