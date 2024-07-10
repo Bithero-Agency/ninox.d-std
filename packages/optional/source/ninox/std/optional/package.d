@@ -131,7 +131,7 @@ struct Optional(T) {
     }
 
     /// Converts the optional into a string representation
-    string toString() const @safe pure {
+    string toString() const {
         if (_isSome) {
             import std.conv : to;
             return "Optional!" ~ T.stringof ~ ".some(" ~ to!string(this.value) ~ ")";
