@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/variant
+*-variant.so
+*-variant.dylib
+*-variant.dll
+*-variant.a
+*-variant.lib
+*-variant-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst

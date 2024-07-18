@@ -9,6 +9,7 @@
 	"subPackages": [
 		"./packages/optional",
 		"./packages/callable",
-		"./packages/traits"
+		"./packages/traits",
+		"./packages/variant"
 	]
 }
