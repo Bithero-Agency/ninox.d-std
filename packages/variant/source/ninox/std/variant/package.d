@@ -53,6 +53,7 @@ struct Variant {
         tryPut,
         isTruthy,
         lookupMember,
+        toStr,
     }
 
     private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
@@ -250,6 +251,22 @@ struct Variant {
                     }
                 }
                 else {
+                    return false;
+                }
+
+            case Op.toStr:
+                import std.conv : to;
+                static if (
+                    is(T == struct)
+                    || isFunctionPointer!T || isDelegate!T || isPointer!T
+                    || is(T == class) || is(T == interface)
+                    || isArray!T || isAssociativeArray!T
+                    || isScalarType!T
+                ) {
+                    T* src = cast(T*) (cast(void[])data).ptr;
+                    *(cast(string*) dest) = (*src).to!string;
+                    return true;
+                } else {
                     return false;
                 }
         }
@@ -534,6 +551,14 @@ struct Variant {
         else {
             throw new VariantException("Cannot lookup member on Variant: feature is not enabled");
         }
+    }
+
+    // -------------------- toString --------------------
+
+    @property string toString() const {
+        string str;
+        this._handler(Op.toStr, cast(void*) &str, null, this._data);
+        return str;
     }
 
 }
@@ -1021,4 +1046,41 @@ unittest {
     assert(c.i == 0);
     doSome.get!DG()();
     assert(c.i == 42);
+}
+
+/// Test toString
+unittest {
+    import std.conv : to;
+    import std.stdio;
+
+    assert(Variant(1).toString == "1");
+    assert(Variant(true).toString == "true");
+    assert(Variant("hello").toString == "hello");
+
+    assert(Variant([ 11, 22 ]).toString == "[11, 22]");
+    assert(Variant(cast(int[2]) [ 11, 22 ]).toString == "[11, 22]");
+    assert(Variant([ "a": 1, "b": 2 ]).toString == "[\"b\":2, \"a\":1]");
+
+    struct S1 { int i = 42; }
+    assert(Variant(S1()).toString == "S1(42)");
+
+    struct S2 {
+        string toString() const @safe pure nothrow {
+            return "abc";
+        }
+    }
+    assert(Variant(S2()).toString == "abc");
+
+    auto fn = () {};
+    assert(Variant(fn).toString == fn.to!string);
+
+    class C1 {}
+    assert(Variant(new C1()).toString == "ninox.std.variant.__unittest_L1052_C1.C1");
+
+    class C2 {
+        override string toString() const @safe pure nothrow {
+            return "def";
+        }
+    }
+    assert(Variant(new C2()).toString == "def");
 }
