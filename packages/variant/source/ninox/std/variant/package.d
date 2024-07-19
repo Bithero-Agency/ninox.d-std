@@ -268,6 +268,13 @@ struct Variant {
         *(cast(T*) this._data.ptr) = val;
     }
 
+    this(T)(T val) if (is(T == struct)) {
+        this._handler = &handler!(T);
+
+        this._data = new void[T.sizeof];
+        *(cast(T*) this._data.ptr) = val;
+    }
+
     this(T)(T val) if (is(T == class) || is(T == interface)) {
         this._handler = &handler!T;
 
@@ -310,6 +317,15 @@ struct Variant {
         // it here and copy it.
         this._data = new void[T.sizeof];
         *(cast(T*) this._data.ptr) = val;
+        return this;
+    }
+
+    auto opAssign(T)(T val) if (is(T == struct)) {
+        this._handler = &handler!(T);
+
+        this._data = new void[T.sizeof];
+        *(cast(T*) this._data.ptr) = val;
+
         return this;
     }
 
