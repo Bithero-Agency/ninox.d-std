@@ -244,7 +244,7 @@ struct Variant {
                 version (ninox_std_variant_lookupMember) {
                     static if (is(T == class) || is(T == struct) || is(T == interface)) {
                         string name = *(cast(string*) arg);
-                        return lookupMember!(T)(cast(Variant*) dest, name, (cast(void[])data).ptr);
+                        return lookupMember!(Unqual!T)(cast(Variant*) dest, name, (cast(void[])data).ptr);
                     } else {
                         return false;
                     }
@@ -281,7 +281,7 @@ struct Variant {
         this._handler = &handler!T;
 
         this._data = new void[T.sizeof];
-        *(cast(T*) this._data.ptr) = val;
+        *(cast(Unqual!T*) this._data.ptr) = val;
     }
 
     this(T)(T val) if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
@@ -329,7 +329,7 @@ struct Variant {
         this._handler = &handler!T;
 
         this._data = new void[T.sizeof];
-        *(cast(T*) this._data.ptr) = val;
+        *(cast(Unqual!T*) this._data.ptr) = val;
 
         return this;
     }
@@ -545,6 +545,25 @@ unittest {
     assert(!v.isTruthy);
 }
 
+/// Test const numeric & not possible to cast const-ness away
+unittest {
+    const int j = 56;
+    auto v = Variant(j);
+
+    assert(v.hasValue);
+    assert(v.isTruthy);
+
+    assert(v.get!(const int) == 56);
+
+    try {
+        v.get!int;
+        assert(0);
+    }
+    catch (VariantException e) {
+        assert(e.message == "Could not retrieve value for specified type");
+    }
+}
+
 /// Test string
 unittest {
     string s = "hello";
@@ -668,6 +687,24 @@ unittest {
     assert(!v.isTruthy);
 }
 
+/// Test const class & not possible to cast const-ness away
+unittest {
+    class C {}
+    const C c = new C();
+
+    auto v = Variant(c);
+    assert(v.hasValue);
+
+    assert(v.get!(const C) == c);
+
+    try {
+        v.get!C;
+        assert(0);
+    } catch (VariantException e) {
+        assert(e.message == "Could not retrieve value for specified type");
+    }
+}
+
 /// Test class as interface
 unittest {
     interface I {}
@@ -684,6 +721,26 @@ unittest {
     assert(v.peek!I is null);
 
     assert(v.isTruthy);
+}
+
+/// Test const class as interface & not possible to cast const-ness away
+unittest {
+    interface I {}
+    class C : I {}
+    const C c = new C();
+    const I i = cast(I) c;
+
+    auto v = Variant(c);
+    assert(v.hasValue);
+
+    assert(v.get!(const I) is i);
+
+    try {
+        v.get!I;
+        assert(0);
+    } catch (VariantException e) {
+        assert(e.message == "Could not retrieve value for specified type");
+    }
 }
 
 /// Test interface
@@ -709,6 +766,26 @@ unittest {
     assert(v.get!I is null);
     assert(v.hasValue);
     assert(!v.isTruthy);
+}
+
+/// Test const interface & not possible to cast const-ness away
+unittest {
+    interface I {}
+    class C : I {}
+    C c = new C();
+    const I i = cast(I) c;
+
+    auto v = Variant(i);
+    assert(v.hasValue);
+
+    assert(v.get!(const I) == i);
+
+    try {
+        v.get!I;
+        assert(0);
+    } catch (VariantException e) {
+        assert(e.message == "Could not retrieve value for specified type");
+    }
 }
 
 /// Test assign
