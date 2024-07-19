@@ -612,6 +612,22 @@ struct Variant {
         return ret;
     }
 
+    Variant doCall(Variant[] params) {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to execute doCall on Variant: holds no data"
+            );
+        }
+
+        Variant ret;
+        if (!this._handler(Op.call, cast(void*) &ret, cast(void*) &params, this._data)) {
+            throw new VariantException(
+                "Failed to execute doCall on Variant: holds no callable value"
+            );
+        }
+        return ret;
+    }
+
 }
 
 /// Test numerics (int)
