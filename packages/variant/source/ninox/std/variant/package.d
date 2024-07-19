@@ -145,6 +145,10 @@ struct Variant {
                 auto d = cast(size_t[2]*) data.ptr;
                 return (*d)[0] > 0;
             }
+            else static if (isFunctionPointer!T || isDelegate!T) {
+                auto d = cast(T*) data.ptr;
+                return (*d) !is null;
+            }
         }
 
         final switch (op) {
@@ -163,6 +167,15 @@ struct Variant {
                     }
                     if (dest !is null) {
                         *(cast(void**) dest) = (cast(void[])data).ptr;
+                    }
+                    return true;
+                }
+                else static if (isFunctionPointer!T || isDelegate!T) {
+                    if (ty != typeid(T)) {
+                        return false;
+                    }
+                    if (dest !is null) {
+                        *(cast(T*) dest) = *(cast(T*) ((cast(void[])data).ptr));
                     }
                     return true;
                 }
@@ -204,6 +217,15 @@ struct Variant {
         *(cast(T*) this._data.ptr) = val;
     }
 
+    this(T)(T val) if (isFunctionPointer!T || isDelegate!T) {
+        this._handler = &handler!T;
+
+        if (val !is null) {
+            this._data = new void[T.sizeof];
+            *(cast(T*) this._data.ptr) = val;
+        }
+    }
+
     // -------------------- opAssign --------------------
 
     auto opAssign(Variant var) {
@@ -240,6 +262,18 @@ struct Variant {
 
         this._data = new void[T.sizeof];
         *(cast(T*) this._data.ptr) = val;
+
+        return this;
+    }
+
+    auto opAssign(T)(T val) if (isFunctionPointer!T || isDelegate!T) {
+        this._handler = &handler!T;
+        this._data = [];
+
+        if (val !is null) {
+            this._data = new void[T.sizeof];
+            *(cast(T*) this._data.ptr) = val;
+        }
 
         return this;
     }
@@ -354,9 +388,9 @@ struct Variant {
      * 
      * Throws: A <c>VariantException</c> if either the variant holds no value,
      *         or the requested type is not compatible with the value held.
-     * Returns: The class requested
+     * Returns: The class, interface, function or delegate requested
      */
-    @property T get(T)() const @trusted if (is(T == class) || is(T == interface)) {
+    @property T get(T)() const @trusted if (is(T == class) || is(T == interface) || isFunctionPointer!T || isDelegate!T) {
         if (!this.hasValue) {
             throw new VariantException(
                 "Unable to retrieve value from Variant: holds no data"
@@ -593,4 +627,48 @@ unittest {
 
     int j = 33;
     v = j;
+}
+
+/// Test function
+unittest {
+    auto fn = (ref int i) { i = 42; };
+
+    auto v = Variant(fn);
+    assert(v.hasValue);
+    assert(v.isTruthy);
+
+    alias FN = void function(ref int i) pure nothrow @nogc @safe;
+
+    assert(v.get!FN == fn);
+
+    int i = 0;
+    assert(i == 0);
+    v.get!FN()(i);
+    assert(i == 42);
+
+    assert(v.peek!FN !is null);
+    assert(*(v.peek!FN) == fn);
+}
+
+/// Test delegate
+unittest {
+    int i = 0;
+    void doSome() {
+        i = 42;
+    }
+
+    auto v = Variant(&doSome);
+    assert(v.hasValue);
+    assert(v.isTruthy);
+
+    alias DG = void delegate() pure nothrow @nogc @safe;
+
+    assert(v.get!DG == &doSome);
+
+    assert(i == 0);
+    v.get!DG()();
+    assert(i == 42);
+
+    assert(v.peek!DG !is null);
+    assert(*(v.peek!DG) == &doSome);
 }
