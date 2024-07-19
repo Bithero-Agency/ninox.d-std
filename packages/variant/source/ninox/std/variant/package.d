@@ -686,7 +686,7 @@ unittest {
         assert(0);
     }
     catch (VariantException e) {
-        assert(e.message == "Could not retrieve value for specified type");
+        assert(e.message == "Could not retrieve value for specified type: const(int) != int");
     }
 }
 
@@ -827,7 +827,8 @@ unittest {
         v.get!C;
         assert(0);
     } catch (VariantException e) {
-        assert(e.message == "Could not retrieve value for specified type");
+        import std.string : startsWith;
+        assert(e.message.startsWith("Could not retrieve value for specified type"));
     }
 }
 
@@ -865,7 +866,8 @@ unittest {
         v.get!I;
         assert(0);
     } catch (VariantException e) {
-        assert(e.message == "Could not retrieve value for specified type");
+        import std.string : startsWith;
+        assert(e.message.startsWith("Could not retrieve value for specified type"));
     }
 }
 
@@ -910,7 +912,8 @@ unittest {
         v.get!I;
         assert(0);
     } catch (VariantException e) {
-        assert(e.message == "Could not retrieve value for specified type");
+        import std.string : startsWith;
+        assert(e.message.startsWith("Could not retrieve value for specified type"));
     }
 }
 
