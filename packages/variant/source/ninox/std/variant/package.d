@@ -52,6 +52,7 @@ struct Variant {
         getTypeInfo,
         tryPut,
         isTruthy,
+        lookupMember,
     }
 
     private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
@@ -151,6 +152,59 @@ struct Variant {
             }
         }
 
+        version (ninox_std_variant_lookupMember) {
+            static if (is(T == class) || is(T == struct) || is(T == interface)) {
+                bool lookupMember(T)(Variant* dest, string name, void* data) {
+                    static if (is(T == struct)) {
+                        T* src = cast(T*) data;
+                    }
+                    else {
+                        T src = *(cast(T*) data);
+                    }
+
+                    static foreach (memberName; __traits(derivedMembers, T)) {
+                        static if (__traits(compiles, mixin("T." ~ memberName))) {
+                            if (name == memberName) {
+                                static if (isFunction!(mixin("T." ~ memberName))) {
+                                    *dest = Variant(mixin("&(src." ~ memberName ~ ")"));
+                                }
+                                else {
+                                    *dest = Variant(mixin("src." ~ memberName));
+                                }
+                                return true;
+                            }
+                        }
+                    }
+
+                    static if (is(T == class)) {
+                        alias baseClasses = BaseClassesTuple!T;
+                        static if (baseClasses.length > 1 && !is(baseClasses[0] == Object)) {
+                            auto base_data = cast(baseClasses[0]) src;
+                            return lookupMember!(baseClasses[0])(dest, name, &base_data);
+                        }
+                    }
+                    else static if (is(T == struct)) {
+                        alias aliasThis = __traits(getAliasThis, T);
+                        static if (aliasThis.length == 1) {
+                            alias baseTy = typeof(mixin("T." ~ aliasThis[0]));
+                            static if (isPointer!baseTy) {
+                                auto base_data = mixin("src." ~ aliasThis[0]);
+                                return lookupMember!(PointerTarget!baseTy)(dest, name, base_data);
+                            }
+                            else {
+                                auto base_data = mixin("&(src." ~ aliasThis[0] ~ ")");
+                                return lookupMember!(baseTy)(dest, name, base_data);
+                            }
+                        }
+                        else static if (aliasThis.length >= 2) {
+                            static assert(0, "A struct with 2 or more 'alias this' is not supported.");
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+
         final switch (op) {
             case Op.unknown:
                 throw new VariantException("Unknown variant operation");
@@ -185,6 +239,19 @@ struct Variant {
 
             case Op.isTruthy:
                 return isTruthyImpl!(T)();
+
+            case Op.lookupMember:
+                version (ninox_std_variant_lookupMember) {
+                    static if (is(T == class) || is(T == struct) || is(T == interface)) {
+                        string name = *(cast(string*) arg);
+                        return lookupMember!(T)(cast(Variant*) dest, name, (cast(void[])data).ptr);
+                    } else {
+                        return false;
+                    }
+                }
+                else {
+                    return false;
+                }
         }
     }
 
@@ -428,6 +495,29 @@ struct Variant {
             throw new VariantException("Could not retrieve value for specified type");
         }
         return val;
+    }
+
+    // -------------------- lookupMember --------------------
+
+    @property Variant lookupMember(string s) {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to lookup member on Variant: holds no data"
+            );
+        }
+
+        version (ninox_std_variant_lookupMember) {
+            Variant ret;
+            if (!this._handler(Op.lookupMember, cast(void*) &ret, cast(void*) &s, this._data)) {
+                throw new VariantException(
+                    "Unable to lookup member on Variant: holds not a struct, class or interface or member is not known"
+                );
+            }
+            return ret;
+        }
+        else {
+            throw new VariantException("Cannot lookup member on Variant: feature is not enabled");
+        }
     }
 
 }
@@ -682,4 +772,160 @@ unittest {
 
     assert(v.isTruthy);
     assert(v.get!(S*) == &s);
+}
+
+/// Test lookupMember on struct
+unittest {
+    struct S {
+        int i;
+
+        this(int i) {
+            this.i = i;
+        }
+
+        void doSome() {
+            this.i *= 2;
+        }
+    }
+    S s = S(42);
+    auto v = Variant(s);
+
+    auto i = v.lookupMember("i");
+    assert(i.hasValue);
+    assert(i.type == typeid(int));
+    assert(i.get!int == 42);
+
+    auto doSome = v.lookupMember("doSome");
+    assert(doSome.hasValue);
+
+    alias DG = void delegate();
+
+    assert(s.i == 42);
+    doSome.get!DG()();
+    assert(v.get!S.i == 84);
+}
+
+/// Test lookupMember on class
+unittest {
+    class C {
+        int i;
+
+        this(int i) {
+            this.i = i;
+        }
+
+        void doSome() {
+            this.i *= 2;
+        }
+    }
+    auto c = new C(42);
+    auto v = Variant(c);
+
+    auto i = v.lookupMember("i");
+    assert(i.hasValue);
+    assert(i.type == typeid(int));
+    assert(i.get!int == 42);
+
+    auto doSome = v.lookupMember("doSome");
+    assert(doSome.hasValue);
+
+    alias DG = void delegate();
+
+    assert(doSome.get!DG == &(c.doSome));
+    assert(c.i == 42);
+    doSome.get!DG()();
+    assert(c.i == 84);
+}
+
+/// Test lookupMember on interface
+unittest {
+    interface I {
+        void doSome();
+    }
+    class C : I {
+        int i;
+
+        this(int i) {
+            this.i = i;
+        }
+
+        void doSome() {
+            this.i *= 2;
+        }
+    }
+    auto c = new C(42);
+    I i = c;
+    auto v = Variant(i);
+
+    auto doSome = v.lookupMember("doSome");
+    assert(doSome.hasValue);
+
+    alias DG = void delegate();
+
+    assert(c.i == 42);
+    doSome.get!DG()();
+    assert(c.i == 84);
+}
+
+/// Test lookupMember on struct with alias this
+unittest {
+    struct B {
+        int i;
+    }
+    struct S {
+        B* b;
+        alias b this;
+    }
+    B b = B(42);
+    S s = S(&b);
+    auto v = Variant(s);
+
+    auto i = v.lookupMember("i");
+    assert(i.hasValue);
+    assert(i.type == typeid(int));
+    assert(i.get!int == 42);
+}
+
+/// Test lookupMember on class with parent
+unittest {
+    class B {
+        int i;
+    }
+    class C : B {}
+
+    auto c = new C();
+    c.i = 42;
+    auto v = Variant(c);
+
+    auto i = v.lookupMember("i");
+    assert(i.hasValue);
+    assert(i.get!int == 42);
+}
+
+/// Test lookupMember on interface with parent
+unittest {
+    interface I {
+        void doSome();
+    }
+    interface I2 : I {}
+    class C : I2 {
+        int i = 0;
+
+        void doSome() {
+            this.i = 42;
+        }
+    }
+
+    auto c = new C();
+    auto v = Variant(c);
+
+    auto doSome = v.lookupMember("doSome");
+    assert(doSome.hasValue);
+
+    alias DG = void delegate();
+    assert(doSome.get!DG == &(c.doSome));
+
+    assert(c.i == 0);
+    doSome.get!DG()();
+    assert(c.i == 42);
 }
