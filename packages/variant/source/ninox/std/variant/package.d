@@ -42,7 +42,7 @@ struct Variant {
 
     private {
         void[] _data;
-        bool function(Op op, void* dest, TypeInfo ty, const void[] data) _handler;
+        bool function(Op op, void* dest, void* arg, const void[] data) _handler;
     }
 
     // -------------------- handler implementations --------------------
@@ -54,7 +54,7 @@ struct Variant {
         isTruthy,
     }
 
-    private static bool handler(T)(Op op, void* dest, TypeInfo ty, const void[] data) {
+    private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
 
         bool tryPut(void* dest, TypeInfo ty, void* data) {
             alias UT = Unqual!T;
@@ -156,6 +156,7 @@ struct Variant {
                 return true;
 
             case Op.tryPut:
+                TypeInfo ty = cast(TypeInfo) arg;
                 static if (is(T == struct)) {
                     if (ty != typeid(T)) {
                         return false;
@@ -303,7 +304,7 @@ struct Variant {
         if (!this.hasValue) {
             throw new VariantException("Cannot use uninitialized Variant");
         }
-        return this._handler(Op.tryPut, null, ty, this._data);
+        return this._handler(Op.tryPut, null, cast(void*) ty, this._data);
     }
 
     // -------------------- peek --------------------
@@ -342,7 +343,7 @@ struct Variant {
         }
 
         T* ptr = null;
-        if (!this._handler(Op.tryPut, cast(void*) &ptr, typeid(T), this._data)) {
+        if (!this._handler(Op.tryPut, cast(void*) &ptr, cast(void*) typeid(T), this._data)) {
             throw new VariantException("Could not retrieve value for specified type");
         }
         return *ptr;
@@ -367,7 +368,7 @@ struct Variant {
         }
 
         T ptr = null;
-        if (!this._handler(Op.tryPut, cast(void*) &ptr, typeid(T), this._data)) {
+        if (!this._handler(Op.tryPut, cast(void*) &ptr, cast(void*) typeid(T), this._data)) {
             throw new VariantException("Could not retrieve value for specified type");
         }
         return ptr;
@@ -388,7 +389,7 @@ struct Variant {
         }
 
         Unqual!T val;
-        if (!this._handler(Op.tryPut, cast(void*)(&val), typeid(T), this._data)) {
+        if (!this._handler(Op.tryPut, cast(void*)(&val), cast(void*) typeid(T), this._data)) {
             throw new VariantException("Could not retrieve value for specified type");
         }
         return val;
