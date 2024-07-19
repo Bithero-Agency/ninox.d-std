@@ -277,7 +277,7 @@ struct Variant {
         }
     }
 
-    this(T)(T val) if (isScalarType!T | isArray!T || isAssociativeArray!T) {
+    this(T)(T val) if (isScalarType!T || isArray!T || isAssociativeArray!T) {
         this._handler = &handler!T;
 
         this._data = new void[T.sizeof];
@@ -325,7 +325,7 @@ struct Variant {
         return this;
     }
 
-    auto opAssign(T)(T val) if (isScalarType!T | isArray!T || isAssociativeArray!T) {
+    auto opAssign(T)(T val) if (isScalarType!T || isArray!T || isAssociativeArray!T) {
         this._handler = &handler!T;
 
         this._data = new void[T.sizeof];
