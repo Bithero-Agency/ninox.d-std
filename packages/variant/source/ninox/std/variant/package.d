@@ -248,6 +248,7 @@ struct Variant {
 
     auto opAssign(T)(T val) if (is(T == class) || is(T == interface)) {
         this._handler = &handler!T;
+        this._data = [];
 
         if (val !is null) {
             this._data = new void[(void*).sizeof];
