@@ -56,6 +56,7 @@ struct Variant {
         toStr,
         call,
         isCallable,
+        iterate,
     }
 
     private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
@@ -303,6 +304,21 @@ struct Variant {
 
             case Op.isCallable:
                 static if (isFunctionPointer!T || isDelegate!T || isCallable!T) {
+                    return true;
+                }
+                else {
+                    return false;
+                }
+
+            case Op.iterate:
+                auto dg = *(cast(int delegate(ref Variant, ref Variant)*) arg);
+                static if (isArray!T || isAssociativeArray!T) {
+                    T* src = cast(T*) (cast(void[])data).ptr;
+                    foreach (ref idx, ref elem; *src) {
+                        auto _idx = Variant(idx);
+                        auto _elem = Variant(elem);
+                        if (dg(_idx, _elem)) break;
+                    }
                     return true;
                 }
                 else {
@@ -644,6 +660,22 @@ struct Variant {
 
     @property bool isCallable() const {
         return this._handler(Op.isCallable, null, null, null);
+    }
+
+    // -------------------- iterateable --------------------
+
+    void iterateOver(scope int delegate(ref Variant, ref Variant) dg) {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to execute iterateOver on Variant: holds no data"
+            );
+        }
+
+        if (!this._handler(Op.iterate, null, cast(void*) &dg, this._data)) {
+            throw new VariantException(
+                "Unable to execute iterateOver on Variant: value does not support this"
+            );
+        }
     }
 
 }
