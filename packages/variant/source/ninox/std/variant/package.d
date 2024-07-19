@@ -145,7 +145,7 @@ struct Variant {
                 auto d = cast(size_t[2]*) data.ptr;
                 return (*d)[0] > 0;
             }
-            else static if (isFunctionPointer!T || isDelegate!T) {
+            else static if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
                 auto d = cast(T*) data.ptr;
                 return (*d) !is null;
             }
@@ -170,7 +170,7 @@ struct Variant {
                     }
                     return true;
                 }
-                else static if (isFunctionPointer!T || isDelegate!T) {
+                else static if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
                     if (ty != typeid(T)) {
                         return false;
                     }
@@ -217,7 +217,7 @@ struct Variant {
         *(cast(T*) this._data.ptr) = val;
     }
 
-    this(T)(T val) if (isFunctionPointer!T || isDelegate!T) {
+    this(T)(T val) if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
         this._handler = &handler!T;
 
         if (val !is null) {
@@ -267,7 +267,7 @@ struct Variant {
         return this;
     }
 
-    auto opAssign(T)(T val) if (isFunctionPointer!T || isDelegate!T) {
+    auto opAssign(T)(T val) if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
         this._handler = &handler!T;
         this._data = [];
 
@@ -391,7 +391,7 @@ struct Variant {
      *         or the requested type is not compatible with the value held.
      * Returns: The class, interface, function or delegate requested
      */
-    @property T get(T)() const @trusted if (is(T == class) || is(T == interface) || isFunctionPointer!T || isDelegate!T) {
+    @property T get(T)() const @trusted if (is(T == class) || is(T == interface) || isFunctionPointer!T || isDelegate!T || isPointer!T) {
         if (!this.hasValue) {
             throw new VariantException(
                 "Unable to retrieve value from Variant: holds no data"
@@ -672,4 +672,14 @@ unittest {
 
     assert(v.peek!DG !is null);
     assert(*(v.peek!DG) == &doSome);
+}
+
+/// Test pointer to struct
+unittest {
+    struct S {}
+    auto s = S();
+    auto v = Variant(&s);
+
+    assert(v.isTruthy);
+    assert(v.get!(S*) == &s);
 }
