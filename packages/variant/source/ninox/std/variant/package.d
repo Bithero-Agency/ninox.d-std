@@ -1075,7 +1075,9 @@ unittest {
     assert(Variant(fn).toString == fn.to!string);
 
     class C1 {}
-    assert(Variant(new C1()).toString == "ninox.std.variant.__unittest_L1052_C1.C1");
+    import std.string : startsWith, endsWith;
+    assert(Variant(new C1()).toString.startsWith("ninox.std.variant.__unittest_L"));
+    assert(Variant(new C1()).toString.endsWith("_C1.C1"));
 
     class C2 {
         override string toString() const @safe pure nothrow {
