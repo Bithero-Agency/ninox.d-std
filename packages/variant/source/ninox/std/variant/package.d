@@ -612,7 +612,7 @@ struct Variant {
         return ret;
     }
 
-    Variant doCall(Variant[] params) {
+    Variant doCall(Variant[] params = []) {
         if (!this.hasValue) {
             throw new VariantException(
                 "Unable to execute doCall on Variant: holds no data"
@@ -1159,10 +1159,12 @@ unittest {
     auto fn1 = () { return 42; };
     auto v = Variant(fn1);
     assert(v().get!int == 42);
+    assert(v.doCall().get!int == 42);
 
     auto fn2 = (int i) { return i * 2; };
     v = Variant(fn2);
     assert(v(12).get!int == 24);
+    assert(v.doCall([ Variant(12) ]).get!int == 24);
 
     // Currently ref's aren't correctly forwarded
     auto fn3 = (ref int i) { i *= 2; };
@@ -1188,6 +1190,7 @@ unittest {
     }
     v = Variant(new C());
     assert(v().get!int == 42);
+    assert(v.doCall().get!int == 42);
 
     struct S2 {
         auto opCall(int i) {
@@ -1197,4 +1200,5 @@ unittest {
     S2 s2;
     v = Variant(s2);
     assert(v(12).get!int == 24);
+    assert(v.doCall([ Variant(12) ]).get!int == 24);
 }
