@@ -54,6 +54,7 @@ struct Variant {
         isTruthy,
         lookupMember,
         toStr,
+        call,
     }
 
     private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
@@ -267,6 +268,33 @@ struct Variant {
                     *(cast(string*) dest) = (*src).to!string;
                     return true;
                 } else {
+                    return false;
+                }
+
+            case Op.call:
+                static if (isFunctionPointer!T || isDelegate!T || isCallable!T) {
+                    T* src = cast(T*) (cast(void[])data).ptr;
+                    Variant[] params = *(cast(Variant[]*) arg);
+
+                    alias ParamTypes = Parameters!T;
+
+                    import std.typecons : Tuple;
+                    Tuple!(staticMap!(Unqual, ParamTypes)) raw_args;
+                    foreach (i, PT; ParamTypes) {
+                        raw_args[i] = cast() params[i].get!PT;
+                    }
+
+                    auto args = cast(Tuple!(ParamTypes)) raw_args;
+                    static if (is(ReturnType!T == void)) {
+                        (*src)(args.expand);
+                        *(cast(Variant*) dest) = Variant();
+                    }
+                    else {
+                        *(cast(Variant*) dest) = Variant((*src)(args.expand));
+                    }
+                    return true;
+                }
+                else {
                     return false;
                 }
         }
@@ -559,6 +587,29 @@ struct Variant {
         string str;
         this._handler(Op.toStr, cast(void*) &str, null, this._data);
         return str;
+    }
+
+    // -------------------- opCall --------------------
+
+    Variant opCall(P...)(P params) {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to execute opCall on Variant: holds no data"
+            );
+        }
+
+        Variant[] var_params;
+        foreach (ref param; params) {
+            var_params ~= Variant(param);
+        }
+
+        Variant ret;
+        if (!this._handler(Op.call, cast(void*) &ret, cast(void*) &var_params, this._data)) {
+            throw new VariantException(
+                "Failed to execute opCall on Variant: holds no callable value"
+            );
+        }
+        return ret;
     }
 
 }
@@ -1085,4 +1136,49 @@ unittest {
         }
     }
     assert(Variant(new C2()).toString == "def");
+}
+
+/// Test opCall
+unittest {
+    auto fn1 = () { return 42; };
+    auto v = Variant(fn1);
+    assert(v().get!int == 42);
+
+    auto fn2 = (int i) { return i * 2; };
+    v = Variant(fn2);
+    assert(v(12).get!int == 24);
+
+    // Currently ref's aren't correctly forwarded
+    auto fn3 = (ref int i) { i *= 2; };
+    v = Variant(fn3);
+    int i = 5; v(i);
+    assert(i != 10);
+
+    struct S {
+        int i;
+        void doSome() {
+            this.i *= 2;
+        }
+    }
+    auto s = S(5);
+    v = Variant(&(s.doSome));
+    v();
+    assert(s.i == 10);
+
+    class C {
+        auto opCall() {
+            return 42;
+        }
+    }
+    v = Variant(new C());
+    assert(v().get!int == 42);
+
+    struct S2 {
+        auto opCall(int i) {
+            return i * 2;
+        }
+    }
+    S2 s2;
+    v = Variant(s2);
+    assert(v(12).get!int == 24);
 }
