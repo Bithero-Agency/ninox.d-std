@@ -55,6 +55,7 @@ struct Variant {
         lookupMember,
         toStr,
         call,
+        isCallable,
     }
 
     private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
@@ -207,6 +208,8 @@ struct Variant {
             }
         }
 
+        import std.traits : isCallable;
+
         final switch (op) {
             case Op.unknown:
                 throw new VariantException("Unknown variant operation");
@@ -292,6 +295,14 @@ struct Variant {
                     else {
                         *(cast(Variant*) dest) = Variant((*src)(args.expand));
                     }
+                    return true;
+                }
+                else {
+                    return false;
+                }
+
+            case Op.isCallable:
+                static if (isFunctionPointer!T || isDelegate!T || isCallable!T) {
                     return true;
                 }
                 else {
@@ -629,6 +640,10 @@ struct Variant {
             );
         }
         return ret;
+    }
+
+    @property bool isCallable() const {
+        return this._handler(Op.isCallable, null, null, null);
     }
 
 }
