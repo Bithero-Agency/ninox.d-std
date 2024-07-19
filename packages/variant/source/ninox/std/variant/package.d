@@ -41,198 +41,143 @@ struct Variant {
     // -------------------- Fields --------------------
 
     private {
-        TypeInfo _ty;
         void[] _data;
-
-        alias TryPutFn = bool delegate(void* dest, TypeInfo ty);
-        TryPutFn _tryPut = null;
-
-        bool delegate() pure nothrow @safe _isTruthy = null;
+        bool function(Op op, void* dest, TypeInfo ty, const void[] data) _handler;
     }
 
-    // -------------------- _tryPut implementations --------------------
+    // -------------------- handler implementations --------------------
 
-    private bool tryPut(T)(void* dest, TypeInfo ty) if(is(T == struct)) {
-        if (ty != typeid(T)) {
-            return false;
-        }
-        if (dest !is null) {
-            *(cast(void**) dest) = this._data.ptr;
-        }
-        return true;
+    private enum Op {
+        unknown,
+        getTypeInfo,
+        tryPut,
+        isTruthy,
     }
 
-    private bool tryPut(T)(void* dest, TypeInfo ty) if(is(T == class) || is(T == interface)) {
-        alias UT = Unqual!T;
+    private static bool handler(T)(Op op, void* dest, TypeInfo ty, const void[] data) {
 
-        alias MutTypes = AliasSeq!(UT, AllImplicitConversionTargets!UT);
-        alias ConstTypes = staticMap!(ConstOf, MutTypes);
-        alias ImmuTypes = staticMap!(ImmutableOf, MutTypes);
-        alias SharedTypes = staticMap!(SharedOf, MutTypes);
-        alias SharedConstTypes = staticMap!(SharedConstOf, MutTypes);
+        bool tryPut(void* dest, TypeInfo ty, void* data) {
+            alias UT = Unqual!T;
 
-        static if (is(T == immutable)) {
-            alias AllTypes = AliasSeq!(ImmuTypes, ConstTypes, SharedConstTypes);
-        }
-        else static if (is(T == shared)) {
-            static if (is(T == const)) {
-                alias AllTypes = SharedConstTypes;
+            alias MutTypes = AliasSeq!(UT, AllImplicitConversionTargets!UT);
+            alias ConstTypes = staticMap!(ConstOf, MutTypes);
+            alias ImmuTypes = staticMap!(ImmutableOf, MutTypes);
+            alias SharedTypes = staticMap!(SharedOf, MutTypes);
+            alias SharedConstTypes = staticMap!(SharedConstOf, MutTypes);
+
+            static if (is(T == immutable)) {
+                alias AllTypes = AliasSeq!(ImmuTypes, ConstTypes, SharedConstTypes);
             }
-            else {
-                alias AllTypes = AliasSeq!(SharedTypes, SharedConstTypes);
-            }
-        }
-        else static if (is(T == const)) {
-            alias AllTypes = ConstTypes;
-        }
-        else {
-            alias AllTypes = AliasSeq!(MutTypes, ConstTypes, ImmuTypes);
-        }
-        pragma(msg, T, " is ", AllTypes);
-
-        T* src = cast(T*) this._data.ptr;
-        foreach (TC; AllTypes) {
-            if (ty != typeid(TC)) {
-                continue;
-            }
-            if (dest !is null) {
-                //*(cast(void**) dest) = this._data.ptr;
-
-                //import std.stdio;
-                //writeln("tryPut() ty: ", ty, " | TC: ", typeid(TC), " | src: ", src);
-
-                *(cast(Unqual!TC*) dest) = cast(Unqual!TC) *src;
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private bool tryPut(T)(void* dest, TypeInfo ty) if(isScalarType!T) {
-        alias UT = Unqual!T;
-
-        alias MutTypes = AliasSeq!(UT, AllImplicitConversionTargets!UT);
-        alias ConstTypes = staticMap!(ConstOf, MutTypes);
-        alias ImmuTypes = staticMap!(ImmutableOf, MutTypes);
-        alias SharedTypes = staticMap!(SharedOf, MutTypes);
-        alias SharedConstTypes = staticMap!(SharedConstOf, MutTypes);
-
-        static if (is(T == immutable)) {
-            alias AllTypes = AliasSeq!(ImmuTypes, ConstTypes, SharedConstTypes);
-        }
-        else static if (is(T == shared)) {
-            static if (is(T == const)) {
-                alias AllTypes = SharedConstTypes;
-            }
-            else {
-                alias AllTypes = AliasSeq!(SharedTypes, SharedConstTypes);
-            }
-        }
-        else static if (is(T == const)) {
-            alias AllTypes = ConstTypes;
-        }
-        else {
-            alias AllTypes = AliasSeq!(MutTypes, ConstTypes, ImmuTypes);
-        }
-
-        T* src = cast(T*) this._data.ptr;
-        foreach (TC; AllTypes) {
-            if (ty != typeid(TC)) {
-                continue;
-            }
-
-            static if (
-                is(typeof(delegate TC() { return *src; }))
-                || is(TC == const(U), U)
-                || is(TC == shared(U), U)
-                || is(TC == shared const(U), U)
-                || is(TC == immutable(U), U)
-            ) {
-                if (dest !is null) {
-                    auto target = cast(Unqual!TC*) dest;
-                    *target = *src;
+            else static if (is(T == shared)) {
+                static if (is(T == const)) {
+                    alias AllTypes = SharedConstTypes;
+                }
+                else {
+                    alias AllTypes = AliasSeq!(SharedTypes, SharedConstTypes);
                 }
             }
-            else {
-                assert(false, T.stringof);
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private bool tryPut(T)(void* dest, TypeInfo ty) if(isArray!T || isAssociativeArray!T) {
-        alias UT = Unqual!T;
-
-        alias MutTypes = AliasSeq!(UT, AllImplicitConversionTargets!UT);
-        alias ConstTypes = staticMap!(ConstOf, MutTypes);
-        alias ImmuTypes = staticMap!(ImmutableOf, MutTypes);
-        alias SharedTypes = staticMap!(SharedOf, MutTypes);
-        alias SharedConstTypes = staticMap!(SharedConstOf, MutTypes);
-
-        static if (is(T == immutable)) {
-            alias AllTypes = AliasSeq!(ImmuTypes, ConstTypes, SharedConstTypes);
-        }
-        else static if (is(T == shared)) {
-            static if (is(T == const)) {
-                alias AllTypes = SharedConstTypes;
+            else static if (is(T == const)) {
+                alias AllTypes = ConstTypes;
             }
             else {
-                alias AllTypes = AliasSeq!(SharedTypes, SharedConstTypes);
+                alias AllTypes = AliasSeq!(MutTypes, ConstTypes, ImmuTypes);
             }
-        }
-        else static if (is(T == const)) {
-            alias AllTypes = ConstTypes;
-        }
-        else {
-            alias AllTypes = AliasSeq!(MutTypes, ConstTypes, ImmuTypes);
+
+            foreach (TC; AllTypes) {
+                if (ty != typeid(TC)) {
+                    continue;
+                }
+
+                static if (is(T == class) || is(T == interface)) {
+                    if (dest !is null) {
+                        T* src = cast(T*) data;
+                        *(cast(Unqual!TC*) dest) = cast(Unqual!TC) *src;
+                    }
+                }
+                else static if (isArray!T || isAssociativeArray!T) {
+                    if (dest !is null) {
+                        T* src = cast(T*) data;
+                        *cast(T*) dest = *src;
+                    }
+                }
+                else static if (isScalarType!T) {
+                    T* src = cast(T*) data;
+                    static if (
+                        is(typeof(delegate TC() { return *src; }))
+                        || is(TC == const(U), U)
+                        || is(TC == shared(U), U)
+                        || is(TC == shared const(U), U)
+                        || is(TC == immutable(U), U)
+                    ) {
+                        if (dest !is null) {
+                            auto target = cast(Unqual!TC*) dest;
+                            *target = *src;
+                        }
+                    }
+                    else {
+                        assert(false, T.stringof);
+                    }
+                }
+                return true;
+            }
+            return false;
         }
 
-        foreach (TC; AllTypes) {
-            if (ty != typeid(TC)) {
-                continue;
+        bool isTruthyImpl(T)() pure nothrow @trusted {
+            static if(is(T == struct)) {
+                return true;
             }
-            if (dest !is null) {
-                T* src = cast(T*) this._data.ptr;
-                *cast(T*) dest = *src;
+            else static if (is(T == class) || is(T == interface)) {
+                return data.length > 0;
             }
-            return true;
+            else static if (is(T == bool)) {
+                auto d = cast(bool*) data.ptr;
+                return *d;
+            }
+            else static if (isScalarType!T) {
+                auto d = cast(T*) data.ptr;
+                return (*d) != 0;
+            }
+            else static if (isArray!T || isAssociativeArray!T) {
+                if (data.length <= 0) {
+                    return false;
+                }
+                auto d = cast(size_t[2]*) data.ptr;
+                return (*d)[0] > 0;
+            }
         }
-        return false;
-    }
 
-    // -------------------- _isTruthy implementation --------------------
+        final switch (op) {
+            case Op.unknown:
+                throw new VariantException("Unknown variant operation");
 
-    private bool isTruthyImpl(T)() pure nothrow @trusted {
-        static if(is(T == struct)) {
-            return true;
-        }
-        else static if (is(T == class) || is(T == interface)) {
-            return this._data.length > 0;
-        }
-        else static if (is(T == bool)) {
-            auto d = cast(bool*) this._data.ptr;
-            return *d;
-        }
-        else static if (isScalarType!T) {
-            auto d = cast(T*) this._data.ptr;
-            return (*d) != 0;
-        }
-        else static if (isArray!T || isAssociativeArray!T) {
-            if (this._data.length <= 0) {
-                return false;
-            }
-            auto d = cast(size_t[2]*) this._data.ptr;
-            return (*d)[0] > 0;
+            case Op.getTypeInfo:
+                *(cast(TypeInfo*)dest) = typeid(T);
+                return true;
+
+            case Op.tryPut:
+                static if (is(T == struct)) {
+                    if (ty != typeid(T)) {
+                        return false;
+                    }
+                    if (dest !is null) {
+                        *(cast(void**) dest) = (cast(void[])data).ptr;
+                    }
+                    return true;
+                }
+                else {
+                    return tryPut(dest, ty, (cast(void[])data).ptr);
+                }
+
+            case Op.isTruthy:
+                return isTruthyImpl!(T)();
         }
     }
 
     // -------------------- constructors --------------------
 
     this(T)(ref T val) if (is(T == struct)) {
-        this._ty = typeid(T);
-        this._tryPut = &tryPut!(T);
-        this._isTruthy = &isTruthyImpl!(T);
+        this._handler = &handler!(T);
 
         // Since we would be stack-smashing
         // when using the ref directly, we
@@ -243,9 +188,7 @@ struct Variant {
     }
 
     this(T)(T val) if (is(T == class) || is(T == interface)) {
-        this._ty = typeid(T);
-        this._tryPut = &tryPut!(T);
-        this._isTruthy = &isTruthyImpl!(T);
+        this._handler = &handler!T;
 
         if (val !is null) {
             this._data = new void[(void*).sizeof];
@@ -254,9 +197,7 @@ struct Variant {
     }
 
     this(T)(T val) if (isScalarType!T | isArray!T || isAssociativeArray!T) {
-        this._ty = typeid(T);
-        this._tryPut = &tryPut!(T);
-        this._isTruthy = &isTruthyImpl!(T);
+        this._handler = &handler!T;
 
         this._data = new void[T.sizeof];
         *(cast(T*) this._data.ptr) = val;
@@ -265,17 +206,13 @@ struct Variant {
     // -------------------- opAssign --------------------
 
     auto opAssign(Variant var) {
-        this._ty = var._ty;
-        this._tryPut = var._tryPut;
-        this._isTruthy = var._isTruthy;
+        this._handler = var._handler;
         this._data = var._data;
         return var;
     }
 
     auto opAssign(T)(ref T val) if (is(T == struct)) {
-        this._ty = typeid(T);
-        this._tryPut = &tryPut!(T);
-        this._isTruthy = &isTruthyImpl!(T);
+        this._handler = &handler!T;
 
         // Since we would be stack-smashing
         // when using the ref directly, we
@@ -287,9 +224,7 @@ struct Variant {
     }
 
     auto opAssign(T)(T val) if (is(T == class) || is(T == interface)) {
-        this._ty = typeid(T);
-        this._tryPut = &tryPut!(T);
-        this._isTruthy = &isTruthyImpl!(T);
+        this._handler = &handler!T;
 
         if (val !is null) {
             this._data = new void[(void*).sizeof];
@@ -300,9 +235,7 @@ struct Variant {
     }
 
     auto opAssign(T)(T val) if (isScalarType!T | isArray!T || isAssociativeArray!T) {
-        this._ty = typeid(T);
-        this._tryPut = &tryPut!(T);
-        this._isTruthy = &isTruthyImpl!(T);
+        this._handler = &handler!T;
 
         this._data = new void[T.sizeof];
         *(cast(T*) this._data.ptr) = val;
@@ -318,7 +251,7 @@ struct Variant {
      * Returns: true if the Variant has a value; false otherwise
      */
     @property bool hasValue() const pure nothrow @safe {
-        return this._tryPut !is null;
+        return this._handler !is null;
     }
 
     /** 
@@ -326,8 +259,10 @@ struct Variant {
      * 
      * Returns: The <c>TypeInfo</c> of the value currently held.
      */
-    @property const(TypeInfo) type() const pure nothrow @safe {
-        return this._ty;
+    @property const(TypeInfo) type() const @trusted {
+        TypeInfo ty = null;
+        this._handler(Op.getTypeInfo, cast(void*) &ty, null, null);
+        return ty;
     }
 
     /** 
@@ -335,11 +270,11 @@ struct Variant {
      * 
      * Returns: true if the variant and it's value is truthy; false otherwise
      */
-    @property bool isTruthy() const pure nothrow @safe {
+    @property bool isTruthy() const @trusted {
         if (!this.hasValue) {
             return false;
         }
-        return this._isTruthy();
+        return this._handler(Op.isTruthy, null, null, this._data);
     }
 
     // -------------------- convertsTo --------------------
@@ -368,7 +303,7 @@ struct Variant {
         if (!this.hasValue) {
             throw new VariantException("Cannot use uninitialized Variant");
         }
-        return this._tryPut(null, ty);
+        return this._handler(Op.tryPut, null, ty, this._data);
     }
 
     // -------------------- peek --------------------
@@ -384,7 +319,7 @@ struct Variant {
         if (!this.hasValue) {
             return null;
         }
-        if (this._ty != typeid(T)) {
+        if (this.type != typeid(T)) {
             return null;
         }
         return (cast(T*) this._data.ptr);
@@ -407,7 +342,7 @@ struct Variant {
         }
 
         T* ptr = null;
-        if (!this._tryPut(cast(void*) &ptr, typeid(T))) {
+        if (!this._handler(Op.tryPut, cast(void*) &ptr, typeid(T), this._data)) {
             throw new VariantException("Could not retrieve value for specified type");
         }
         return *ptr;
@@ -432,7 +367,7 @@ struct Variant {
         }
 
         T ptr = null;
-        if (!this._tryPut(cast(void*) &ptr, typeid(T))) {
+        if (!this._handler(Op.tryPut, cast(void*) &ptr, typeid(T), this._data)) {
             throw new VariantException("Could not retrieve value for specified type");
         }
         return ptr;
@@ -453,7 +388,7 @@ struct Variant {
         }
 
         Unqual!T val;
-        if (!this._tryPut(cast(void*)(&val), typeid(T))) {
+        if (!this._handler(Op.tryPut, cast(void*)(&val), typeid(T), this._data)) {
             throw new VariantException("Could not retrieve value for specified type");
         }
         return val;
