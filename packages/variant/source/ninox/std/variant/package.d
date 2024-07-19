@@ -507,7 +507,8 @@ struct Variant {
 
         T* ptr = null;
         if (!this._handler(Op.tryPut, cast(void*) &ptr, cast(void*) typeid(T), this._data)) {
-            throw new VariantException("Could not retrieve value for specified type");
+            import std.conv : to;
+            throw new VariantException("Could not retrieve value for specified type: " ~ this.type.to!string ~ " != " ~ typeid(T).to!string);
         }
         return *ptr;
     }
@@ -532,7 +533,8 @@ struct Variant {
 
         T ptr = null;
         if (!this._handler(Op.tryPut, cast(void*) &ptr, cast(void*) typeid(T), this._data)) {
-            throw new VariantException("Could not retrieve value for specified type");
+            import std.conv : to;
+            throw new VariantException("Could not retrieve value for specified type: " ~ this.type.to!string ~ " != " ~ typeid(T).to!string);
         }
         return ptr;
     }
@@ -553,7 +555,8 @@ struct Variant {
 
         Unqual!T val;
         if (!this._handler(Op.tryPut, cast(void*)(&val), cast(void*) typeid(T), this._data)) {
-            throw new VariantException("Could not retrieve value for specified type");
+            import std.conv : to;
+            throw new VariantException("Could not retrieve value for specified type: " ~ this.type.to!string ~ " != " ~ typeid(T).to!string);
         }
         return val;
     }
