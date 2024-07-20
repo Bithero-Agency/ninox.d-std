@@ -20,7 +20,7 @@
  * 
  * License:   $(HTTP https://www.gnu.org/licenses/agpl-3.0.html, AGPL 3.0).
  * Copyright: Copyright (C) 2024 Mai-Lapyst
- * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
+ * Authors:   $(HTTP codearq.net/mai-lapyst, Mai-Lapyst)
  */
 module ninox.std.variant;
 
