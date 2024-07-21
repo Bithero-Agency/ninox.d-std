@@ -198,3 +198,54 @@ unittest {
     assert(is(BuildDgType!(void, OutT!int) == void delegate(out int)));
     assert(is(BuildDgType!(void, LazyT!int) == void delegate(lazy int)));
 }
+
+/** 
+ * Detectes weather `T` is a indexable object, which can be called with the
+ * index operator `[]`.
+ * 
+ * Params:
+ *   indexable = The type to check.
+ */
+template isIndexable(alias indexable)
+{
+    static if (is(typeof(&indexable.opIndex) == delegate)) {
+        // member function 'opIndex' is present
+        enum bool isIndexable = true;
+    }
+    else static if (is(typeof(&indexable.opIndex) V : V*) && is(V == function)) {
+        // static member function 'opIndex' is present
+        enum bool isIndexable = true;
+    }
+    else static if (is(typeof(&indexable.opIndex!()) V : V*) && is(V == function)) {
+        enum bool isIndexable = true;
+    }
+    else {
+        import std.traits : isArray, isAssociativeArray;
+        enum bool isIndexable = isArray!(indexable) || isAssociativeArray!(indexable);
+    }
+}
+
+unittest {
+    assert(isIndexable!(int[]));
+    assert(isIndexable!(int[string]));
+
+    struct S1 {
+        void opIndex(int i) {}
+    }
+    assert(isIndexable!S1);
+
+    struct S2 {
+        void opIndex(P...)(P params) {}
+    }
+    assert(isIndexable!S2);
+
+    struct S3 {
+        static void opIndex(int i) {}
+    }
+    assert(isIndexable!S3);
+
+    struct S4 {
+        static void opIndex(P...)(P params) {}
+    }
+    assert(isIndexable!S4);
+}
