@@ -57,6 +57,7 @@ struct Variant {
         call,
         isCallable,
         iterate,
+        index,
     }
 
     private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
@@ -210,6 +211,7 @@ struct Variant {
         }
 
         import std.traits : isCallable;
+        import ninox.std.traits : isIndexable;
 
         final switch (op) {
             case Op.unknown:
@@ -300,7 +302,8 @@ struct Variant {
                             variadicArgs ~= cast() params[i].get!VariadicTy;
                         }
                         raw_args[nonVariadicParamsCount] = variadicArgs;
-                    } else {
+                    }
+                    else {
                         foreach (i, PT; ParamTypes) {
                             raw_args[i] = cast() params[i].get!PT;
                         }
@@ -342,6 +345,77 @@ struct Variant {
                 else {
                     return false;
                 }
+
+            case Op.index: {
+                T* src = cast(T*) (cast(void[])data).ptr;
+                if (src is null) {
+                    static if (isArray!T || isAssociativeArray!T || isIndexable!T) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+
+                Variant[] params = *(cast(Variant[]*) arg);
+                static if (isArray!T) {
+                    if (params.length != 1) {
+                        import std.conv : to;
+                        throw new VariantException(
+                            "Mismatching count of parameters; expected 1 but got " ~ params.length.to!string
+                        );
+                    }
+                    alias ElemTy = typeof(T.init[0]);
+                    *(cast(Variant*) dest) = Variant( (*src)[ params[0].get!ElemTy ] );
+                    return true;
+                } 
+                else static if (isAssociativeArray!T) {
+                    if (params.length != 1) {
+                        import std.conv : to;
+                        throw new VariantException(
+                            "Mismatching count of parameters; expected 1 but got " ~ params.length.to!string
+                        );
+                    }
+                    *(cast(Variant*) dest) = Variant( (*src)[ params[0].get!(KeyType!T) ] );
+                    return true;
+                }
+                else static if (isIndexable!T) {
+                    alias OpIndexTy = typeof( __traits(getMember, T, "opIndex") );
+                    alias ParamTypes = Parameters!OpIndexTy;
+
+                    import std.typecons : Tuple;
+                    Tuple!(staticMap!(Unqual, ParamTypes)) raw_args;
+                    static if (variadicFunctionStyle!OpIndexTy == Variadic.typesafe) {
+                        foreach (i, PT; ParamTypes[0..$-1]) {
+                            raw_args[i] = cast() params[i].get!PT;
+                        }
+                        alias VariadicTy = typeof( ParamTypes[$-1].init[0] );
+                        enum nonVariadicParamsCount = ParamTypes.length - 1;
+                        VariadicTy[] variadicArgs;
+                        for (auto i = nonVariadicParamsCount; i < params.length; i++) {
+                            variadicArgs ~= cast() params[i].get!VariadicTy;
+                        }
+                        raw_args[nonVariadicParamsCount] = variadicArgs;
+                    }
+                    else {
+                        foreach (i, PT; ParamTypes) {
+                            raw_args[i] = cast() params[i].get!PT;
+                        }
+                    }
+
+                    auto args = cast(Tuple!(ParamTypes)) raw_args;
+                    static if (is(ReturnType!OpIndexTy == void)) {
+                        (*src)[args.expand];
+                        *(cast(Variant*) dest) = Variant();
+                    }
+                    else {
+                        *(cast(Variant*) dest) = Variant((*src)[args.expand]);
+                    }
+                    return true;
+                }
+                else {
+                    return false;
+                }
+            }
         }
     }
 
@@ -694,6 +768,49 @@ struct Variant {
                 "Unable to execute iterateOver on Variant: value does not support this"
             );
         }
+    }
+
+    // -------------------- indexable --------------------
+
+    Variant opIndex(P...)(P params) {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to execute opIndex on Variant: holds no data"
+            );
+        }
+
+        Variant[] var_params;
+        foreach (ref param; params) {
+            var_params ~= Variant(param);
+        }
+
+        Variant ret;
+        if (!this._handler(Op.index, cast(void*) &ret, cast(void*) &var_params, this._data)) {
+            throw new VariantException(
+                "Failed to execute opIndex on Variant: holds no indexable value"
+            );
+        }
+        return ret;
+    }
+
+    Variant doIndex(Variant[] params...) {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to execute opIndex on Variant: holds no data"
+            );
+        }
+
+        Variant ret;
+        if (!this._handler(Op.index, cast(void*) &ret, cast(void*) &params, this._data)) {
+            throw new VariantException(
+                "Failed to execute opIndex on Variant: holds no indexable value"
+            );
+        }
+        return ret;
+    }
+
+    @property bool isIndexable() const {
+        return this._handler(Op.index, null, null, null);
     }
 
 }
@@ -1277,4 +1394,27 @@ unittest {
         return args.length;
     });
     assert(v(1, 2, 3).get!long == 3);
+}
+
+/// Test opIndex
+unittest {
+    auto v = Variant([11, 22]);
+    assert(v.isIndexable);
+    assert(v[1].get!int == 22);
+    assert(v.doIndex(Variant(1)).get!int == 22);
+
+    v = Variant([ "a": 1, "b": 2 ]);
+    assert(v.isIndexable);
+    assert(v["b"].get!int == 2);
+    assert(v.doIndex([ Variant("b") ]).get!int == 2);
+
+    struct S {
+        int opIndex(int i) {
+            return i * 2;
+        }
+    }
+    v = Variant(S());
+    assert(v.isIndexable);
+    assert(v[12].get!int == 24);
+    assert(v.doIndex(Variant(12)).get!int == 24);
 }
