@@ -40,7 +40,7 @@ template BuildImportCodeForType(alias T) {
     else static if (isAssociativeArray!T) {
         enum BuildImportCodeForType = BuildImportCodeForType!(ValueType!T) ~ "[" ~ BuildImportCodeForType!(KeyType!T) ~ "]";
     }
-    else static if (isBasicType!T) {
+    else static if (isBasicType!T && !is(T == enum)) {
         enum BuildImportCodeForType = T.stringof;
     }
     else static if (isSomeString!T) {
