@@ -131,13 +131,13 @@ template BuildTypeStr(alias T)
     import std.traits : isInstanceOf;
     import ninox.std.traits : RefT, OutT, LazyT;
     static if (isInstanceOf!(RefT, T)) {
-        enum BuildTypeStr = "ref " ~ T.InnerT.stringof;
+        enum BuildTypeStr = "ref " ~ BuildImportCodeForType!(T.InnerT);
     } else static if (isInstanceOf!(OutT, T)) {
-        enum BuildTypeStr = "out " ~ T.InnerT.stringof;
+        enum BuildTypeStr = "out " ~ BuildImportCodeForType!(T.InnerT);
     } else static if (isInstanceOf!(LazyT, T)) {
-        enum BuildTypeStr = "lazy " ~ T.InnerT.stringof;
+        enum BuildTypeStr = "lazy " ~ BuildImportCodeForType!(T.InnerT);
     } else {
-        enum BuildTypeStr = T.stringof;
+        enum BuildTypeStr = BuildImportCodeForType!T;
     }
 }
 
