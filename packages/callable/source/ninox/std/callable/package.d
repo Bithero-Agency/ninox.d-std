@@ -24,32 +24,59 @@
  */
 module ninox.std.callable;
 
+import ninox.std.traits;
+
 /// A struct that makes holding any function and/or delegate a breeze!
 struct Callable(RetT, ParamsT...) {
-    this(RetT function(ParamsT) fn) pure nothrow @nogc @safe {
+    alias FnT = BuildFnType!(RetT, ParamsT);
+    alias DgT = BuildDgType!(RetT, ParamsT);
+
+    this(FnT fn) pure nothrow @nogc @safe {
         () @trusted { this.fn = fn; }();
         this.kind = Kind.FN;
     }
-    this(RetT delegate(ParamsT) dg) pure nothrow @nogc @safe {
+    this(DgT dg) pure nothrow @nogc @safe {
         () @trusted { this.dg = dg; }();
         this.kind = Kind.DG;
     }
 
-    RetT opCall(ParamsT params) {
-        final switch (this.kind) {
-            case Kind.FN: return fn(params);
-            case Kind.DG: return dg(params);
-            case Kind.NO: throw new Exception("Called uninitialzed Callable!");
+    private template buildOpCall() {
+        import std.conv : to;
+        template buildParams(size_t i) {
+            static if (i >= ParamsT.length) {
+                enum buildParams = "";
+            } else {
+                alias PT = ParamsT[i];
+                enum buildParams = (BuildTypeStr!PT ~ " _arg" ~ i.to!string) ~ ", " ~ buildParams!(i+1);
+            }
         }
+        template buildCallArgs(size_t i) {
+            static if (i >= ParamsT.length) {
+                enum buildCallArgs = "";
+            } else {
+                enum buildCallArgs = ("_arg" ~ i.to!string) ~ ", " ~ buildCallArgs!(i+1);
+            }
+        }
+        enum code =
+            BuildTypeStr!RetT ~ " opCall(" ~ buildParams!(0) ~ ") {\n" ~
+            "    final switch (this.kind) {\n" ~
+            "        case Kind.FN: return fn(" ~ buildCallArgs!(0) ~ ");\n" ~
+            "        case Kind.DG: return dg(" ~ buildCallArgs!(0) ~ ");\n" ~
+            "        case Kind.NO: throw new Exception(\"Called uninitialzed Callable!\");\n" ~
+            "    }\n" ~
+            "}"
+        ;
+        mixin(code);
     }
+    mixin buildOpCall!();
 
-    auto opAssign(RetT function(ParamsT) fn) pure nothrow @nogc @safe {
+    auto opAssign(FnT fn) pure nothrow @nogc @safe {
         () @trusted { this.fn = fn; }();
         this.kind = Kind.FN;
         return this;
     }
 
-    auto opAssign(RetT delegate(ParamsT) dg) pure nothrow @nogc @safe {
+    auto opAssign(DgT dg) pure nothrow @nogc @safe {
         () @trusted { this.dg = dg; }();
         this.kind = Kind.DG;
         return this;
@@ -59,8 +86,8 @@ private:
     enum Kind { NO, FN, DG }
     Kind kind = Kind.NO;
     union {
-        RetT function(ParamsT) fn;
-        RetT delegate(ParamsT) dg;
+        FnT fn;
+        DgT dg;
     }
 }
 
@@ -77,4 +104,11 @@ unittest {
 
     adder = &mul;
     assert( adder(2, 20) == 40 );
+}
+
+unittest {
+    alias C = Callable!(void, RefT!int);
+    C c = (ref int a) { a *= 2; };
+
+    int i = 12; c(i); assert(i == 24);
 }

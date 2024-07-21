@@ -5,5 +5,10 @@
 	"copyright": "Copyright © 2023, Mai-Lapyst",
 	"description": "Callables in dlang",
 	"license": "AGPL-3.0-or-later",
-	"name": "callable"
+	"name": "callable",
+	"dependencies": {
+		"ninox-d_std:traits": {
+			"path": "../.."
+		}
+	}
 }
