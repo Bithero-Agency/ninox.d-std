@@ -284,8 +284,23 @@ struct Variant {
 
                     import std.typecons : Tuple;
                     Tuple!(staticMap!(Unqual, ParamTypes)) raw_args;
-                    foreach (i, PT; ParamTypes) {
-                        raw_args[i] = cast() params[i].get!PT;
+
+                    static if (variadicFunctionStyle!T == Variadic.typesafe) {
+                        foreach (i, PT; ParamTypes[0..$-1]) {
+                            raw_args[i] = cast() params[i].get!PT;
+                        }
+
+                        alias VariadicTy = typeof( ParamTypes[$-1].init[0] );
+                        enum nonVariadicParamsCount = ParamTypes.length - 1;
+                        VariadicTy[] variadicArgs;
+                        for (auto i = nonVariadicParamsCount; i < params.length; i++) {
+                            variadicArgs ~= cast() params[i].get!VariadicTy;
+                        }
+                        raw_args[nonVariadicParamsCount] = variadicArgs;
+                    } else {
+                        foreach (i, PT; ParamTypes) {
+                            raw_args[i] = cast() params[i].get!PT;
+                        }
                     }
 
                     auto args = cast(Tuple!(ParamTypes)) raw_args;
@@ -1254,4 +1269,9 @@ unittest {
     v = Variant(s2);
     assert(v(12).get!int == 24);
     assert(v.doCall([ Variant(12) ]).get!int == 24);
+
+    v = Variant((int[] args...) {
+        return args.length;
+    });
+    assert(v(1, 2, 3).get!long == 3);
 }
