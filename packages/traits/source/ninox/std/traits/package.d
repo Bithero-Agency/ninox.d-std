@@ -164,7 +164,7 @@ private template BuildParamStr(ParamsT...)
  *   ParamsT = The parameter types of the function.
  */
 template BuildFnType(RetT, ParamsT...) {
-    import ninox.std.traits : BuildParamStr;
+    import ninox.std.traits : BuildTypeStr, BuildParamStr;
     alias BuildFnType = mixin(
         BuildTypeStr!RetT ~ " function(" ~ BuildParamStr!ParamsT ~ ")"
     );
@@ -186,7 +186,7 @@ unittest {
  *   ParamsT = The parameter types of the delegate.
  */
 template BuildDgType(RetT, ParamsT...) {
-    import ninox.std.traits : BuildParamStr;
+    import ninox.std.traits : BuildTypeStr, BuildParamStr;
     alias BuildDgType = mixin(
         BuildTypeStr!RetT ~ " delegate(" ~ BuildParamStr!ParamsT ~ ")"
     );
