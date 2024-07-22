@@ -378,6 +378,9 @@ struct Variant {
                     *(cast(Variant*) dest) = Variant( (*src)[ params[0].get!(KeyType!T) ] );
                     return true;
                 }
+                else static if (is(T == Variant)) {
+                    return (*src)._handler(Op.index, dest, arg, (*src)._data);
+                }
                 else static if (isIndexable!T) {
                     alias OpIndexTy = typeof( __traits(getMember, T, "opIndex") );
                     alias ParamTypes = Parameters!OpIndexTy;
