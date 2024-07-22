@@ -364,8 +364,7 @@ struct Variant {
                             "Mismatching count of parameters; expected 1 but got " ~ params.length.to!string
                         );
                     }
-                    alias ElemTy = typeof(T.init[0]);
-                    *(cast(Variant*) dest) = Variant( (*src)[ params[0].get!ElemTy ] );
+                    *(cast(Variant*) dest) = Variant( (*src)[ params[0].get!size_t ] );
                     return true;
                 } 
                 else static if (isAssociativeArray!T) {
