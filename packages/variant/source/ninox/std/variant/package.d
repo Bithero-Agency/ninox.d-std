@@ -252,7 +252,7 @@ struct Variant {
                 version (ninox_std_variant_lookupMember) {
                     static if (is(T == Variant)) {
                         Variant* src = cast(Variant*) (cast(void[])data).ptr;
-                        return (*src)._handler(Op.lookupMember, dest, arg, data);
+                        return (*src)._handler(Op.lookupMember, dest, arg, (*src)._data);
                     } else static if (is(T == class) || is(T == struct) || is(T == interface)) {
                         string name = *(cast(string*) arg);
                         return lookupMember!(Unqual!T)(cast(Variant*) dest, name, (cast(void[])data).ptr);
