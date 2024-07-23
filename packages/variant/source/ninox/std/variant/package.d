@@ -638,6 +638,10 @@ struct Variant {
      * Returns: The <c>TypeInfo</c> of the value currently held.
      */
     @property const(TypeInfo) type() const @trusted {
+        if (!this.hasValue) {
+            return typeid(void);
+        }
+
         TypeInfo ty = null;
         this._handler(Op.getTypeInfo, cast(void*) &ty, null, null);
         return ty;
