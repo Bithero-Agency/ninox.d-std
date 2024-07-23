@@ -61,6 +61,7 @@ struct Variant {
         index,
         equals,
         cmp,
+        length,
     }
 
     private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
@@ -486,6 +487,25 @@ struct Variant {
                 }
 
                 return false;
+
+            case Op.length:
+                static if (isArray!T || isAssociativeArray!T) {
+                    T* src = cast(T*) data.ptr;
+                    *(cast(ulong*) dest) = src.length;
+                    return true;
+                }
+                else static if (
+                    __traits(hasMember, T, "length")
+                    && __traits(compiles, &T.length)
+                    && isNumeric!(typeof(T.length))
+                ) {
+                    T* src = cast(T*) data.ptr;
+                    *(cast(ulong*) dest) = src.length;
+                    return true;
+                }
+                else {
+                    return false;
+                }
         }
     }
 
@@ -886,6 +906,22 @@ struct Variant {
 
     @property bool isIndexable() const {
         return this._handler(Op.index, null, null, null);
+    }
+
+    @property size_t length() const {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to get length from Variant: holds no data"
+            );
+        }
+
+        size_t ret;
+        if (!this._handler(Op.length, cast(void*) &ret, null, this._data)) {
+            throw new VariantException(
+                "Unable to get length from Variant: value does not support this operation"
+            );
+        }
+        return ret;
     }
 
     // -------------------- comparison --------------------
@@ -1618,4 +1654,19 @@ unittest {
 
     v2 = "b" in v;
     assert(!v2.hasValue);
+}
+
+/// Test `.length`
+unittest {
+    auto v = Variant([11, 22]);
+    assert(v.length == 2);
+
+    v = Variant([ "a": 11 ]);
+    assert(v.length == 1);
+
+    struct S1 {
+        @property size_t length() => 42;
+    }
+    v = Variant(S1());
+    assert(v.length == 42);
 }
