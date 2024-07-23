@@ -124,6 +124,12 @@ struct Variant {
                         assert(false, T.stringof);
                     }
                 }
+                else static if (is(T == struct)) {
+                    if (dest !is null) {
+                        *(cast(TC**) dest) = cast(TC*) data;
+                    }
+                }
+
                 return true;
             }
             return false;
@@ -223,16 +229,7 @@ struct Variant {
 
             case Op.tryPut:
                 TypeInfo ty = cast(TypeInfo) arg;
-                static if (is(T == struct)) {
-                    if (ty != typeid(T)) {
-                        return false;
-                    }
-                    if (dest !is null) {
-                        *(cast(void**) dest) = (cast(void[])data).ptr;
-                    }
-                    return true;
-                }
-                else static if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
+                static if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
                     if (ty != typeid(T)) {
                         return false;
                     }
@@ -953,6 +950,8 @@ unittest {
     assert(*v.peek!S == S(42));
 
     assert(v.isTruthy);
+
+    assert(v.get!(const S) == S(42));
 }
 
 /// Test const struct & not possible to cast const-ness away
