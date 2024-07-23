@@ -59,6 +59,7 @@ struct Variant {
         iterate,
         index,
         equals,
+        cmp,
     }
 
     private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
@@ -227,6 +228,25 @@ struct Variant {
                             static assert(0, "A struct with 2 or more 'alias this' is not supported.");
                         }
                     }
+                    return false;
+                }
+            }
+        }
+
+        bool cmp(T* src, T* rhs, Op op, void* dest) {
+            if (op == Op.equals) {
+                return (*rhs == *src);
+            } else {
+                if (*rhs == *src) {
+                    *(cast(int*) dest) = 0;
+                    return true;
+                }
+
+                static if (is(typeof(*src < *rhs))) {
+                    *(cast(int*) dest) = (*src < *rhs) ? -1 : 1;
+                    return true;
+                }
+                else {
                     return false;
                 }
             }
@@ -421,6 +441,7 @@ struct Variant {
                 }
             }
 
+            case Op.cmp:
             case Op.equals:
                 auto other = cast(Variant*) arg;
                 auto otherTy = other.type;
@@ -429,7 +450,7 @@ struct Variant {
                 if (otherTy == typeid(T)) {
                     T* src = cast(T*) data.ptr;
                     T* rhs = cast(T*) other._data.ptr;
-                    return (*rhs == *src);
+                    return cmp(src, rhs, op, dest);
                 }
 
                 // Try to convert this to other...
@@ -437,7 +458,12 @@ struct Variant {
                 temp._data = new void[ other._data.length ];
                 if (tryPut(cast(void*) temp._data.ptr, cast(TypeInfo) otherTy, (cast(void[])data).ptr, true)) {
                     temp._handler = other._handler;
-                    return temp.opEquals(*other);
+                    if (op == Op.equals) {
+                        return temp.opEquals(*other);
+                    } else {
+                        *(cast(int*) dest) = temp.opCmp(*other);
+                        return true;
+                    }
                 }
 
                 // Try converting other to this...
@@ -452,7 +478,7 @@ struct Variant {
                     } else {
                         T* rhs = cast(T*) temp._data.ptr;
                     }
-                    return (*rhs == *src);
+                    return cmp(src, rhs, op, dest);
                 }
 
                 return false;
@@ -869,6 +895,31 @@ struct Variant {
             auto arg = Variant(other);
         }
         return this._handler(Op.equals, null, cast(void*) &arg, this._data);
+    }
+
+    int opCmp(T)(const T other) const {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to execute opCmp on Variant: holds no data"
+            );
+        }
+
+        static if (is(T == Variant)) {
+            alias arg = other;
+        }
+        else {
+            auto arg = Variant(other);
+        }
+
+        int res;
+        if (!this._handler(Op.cmp, cast(void*) &res, cast(void*) &arg, this._data)) {
+            import std.conv : to;
+            throw new VariantException(
+                "Unable to execute opCmp on Variant: cannot compare "
+                    ~ this.type.to!string ~ " with " ~ typeid(T).to!string
+            );
+        }
+        return res;
     }
 
 }
@@ -1522,4 +1573,12 @@ unittest {
     auto fn1 = () { return 42; };
     v = Variant(fn1);
     assert(v == fn1);
+}
+
+/// Test opCmp
+unittest {
+    auto v = Variant(11);
+    assert (v > 10);
+    assert (v < 12);
+    assert (v >= 11);
 }
