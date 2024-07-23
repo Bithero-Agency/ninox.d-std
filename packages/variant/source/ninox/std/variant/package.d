@@ -805,6 +805,10 @@ struct Variant {
     // -------------------- toString --------------------
 
     @property string toString() const {
+        if (!this.hasValue) {
+            return "<Uninitialized Variant>";
+        }
+
         string str;
         this._handler(Op.toStr, cast(void*) &str, null, this._data);
         return str;
