@@ -487,6 +487,11 @@ struct Variant {
 
     // -------------------- constructors --------------------
 
+    this(Variant var) {
+        this._handler = var._handler;
+        this._data = var._data;
+    }
+
     this(T)(ref T val) if (is(T == struct)) {
         this._handler = &handler!(T);
 
