@@ -26,6 +26,7 @@ module ninox.std.variant;
 
 import std.meta;
 import std.traits;
+import core.exception : RangeError;
 
 class VariantException : Exception {
     @nogc @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) {
@@ -927,6 +928,23 @@ struct Variant {
         return res;
     }
 
+    // -------------------- binary operators --------------------
+
+    Variant opBinaryRight(string op, T)(T lhs) if (op == "in") {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to execute 'X in Y' on Variant: holds no data"
+            );
+        }
+
+        Variant[] var_params = [ Variant(lhs) ];
+        Variant ret;
+        try {
+            this._handler(Op.index, cast(void*) &ret, cast(void*) &var_params, this._data);
+        } catch (RangeError) {}
+        return ret;
+    }
+
 }
 
 /// Test numerics (int)
@@ -1586,4 +1604,15 @@ unittest {
     assert (v > 10);
     assert (v < 12);
     assert (v >= 11);
+}
+
+/// Test `X in Y`
+unittest {
+    auto v = Variant([ "a": 11 ]);
+    auto v2 = "a" in v;
+    assert(v2.hasValue);
+    assert(v2.get!int == 11);
+
+    v2 = "b" in v;
+    assert(!v2.hasValue);
 }
