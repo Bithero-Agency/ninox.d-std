@@ -62,7 +62,7 @@ struct Variant {
 
     private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
 
-        bool tryPut(void* dest, TypeInfo ty, void* data) {
+        bool tryPut(void* dest, TypeInfo ty, void* data, bool noRef = false) {
             alias UT = Unqual!T;
 
             static if (is(T == struct)) {
@@ -132,7 +132,11 @@ struct Variant {
                 }
                 else static if (is(T == struct)) {
                     if (dest !is null) {
-                        *(cast(TC**) dest) = cast(TC*) data;
+                        if (noRef) {
+                            *(cast(Unqual!TC*) dest) = *(cast(UT*) data);
+                        } else {
+                            *(cast(Unqual!TC**) dest) = cast(UT*) data;
+                        }
                     }
                 }
                 else static if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
