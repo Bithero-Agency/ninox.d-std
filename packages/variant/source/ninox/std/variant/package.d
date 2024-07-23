@@ -65,7 +65,13 @@ struct Variant {
         bool tryPut(void* dest, TypeInfo ty, void* data) {
             alias UT = Unqual!T;
 
-            alias MutTypes = AliasSeq!(UT, AllImplicitConversionTargets!UT);
+            static if (is(T == struct)) {
+                alias MutTypes = AliasSeq!(UT);
+            }
+            else {
+                alias MutTypes = AliasSeq!(UT, AllImplicitConversionTargets!UT);
+            }
+
             alias ConstTypes = staticMap!(ConstOf, MutTypes);
             alias ImmuTypes = staticMap!(ImmutableOf, MutTypes);
             alias SharedTypes = staticMap!(SharedOf, MutTypes);
