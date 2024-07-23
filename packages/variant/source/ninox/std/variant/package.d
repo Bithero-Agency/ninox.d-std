@@ -129,6 +129,11 @@ struct Variant {
                         *(cast(TC**) dest) = cast(TC*) data;
                     }
                 }
+                else static if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
+                    if (dest !is null) {
+                        *(cast(T*) dest) = *(cast(T*) data);
+                    }
+                }
 
                 return true;
             }
@@ -229,18 +234,7 @@ struct Variant {
 
             case Op.tryPut:
                 TypeInfo ty = cast(TypeInfo) arg;
-                static if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
-                    if (ty != typeid(T)) {
-                        return false;
-                    }
-                    if (dest !is null) {
-                        *(cast(T*) dest) = *(cast(T*) ((cast(void[])data).ptr));
-                    }
-                    return true;
-                }
-                else {
-                    return tryPut(dest, ty, (cast(void[])data).ptr);
-                }
+                return tryPut(dest, ty, (cast(void[])data).ptr);
 
             case Op.isTruthy:
                 return isTruthyImpl!(T)();
@@ -1131,6 +1125,8 @@ unittest {
 
     assert(v.peek!FN !is null);
     assert(*(v.peek!FN) == fn);
+
+    assert(v.get!(const FN) == fn);
 }
 
 /// Test delegate
@@ -1154,6 +1150,8 @@ unittest {
 
     assert(v.peek!DG !is null);
     assert(*(v.peek!DG) == &doSome);
+
+    assert(v.get!(const DG) == &doSome);
 }
 
 /// Test pointer to struct
@@ -1164,6 +1162,8 @@ unittest {
 
     assert(v.isTruthy);
     assert(v.get!(S*) == &s);
+
+    assert(v.get!(const S*) == &s);
 }
 
 /// Test lookupMember on struct
