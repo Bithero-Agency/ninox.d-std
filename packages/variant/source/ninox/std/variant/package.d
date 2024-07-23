@@ -428,7 +428,7 @@ struct Variant {
         // instead allocate an buffer for
         // it here and copy it.
         this._data = new void[T.sizeof];
-        *(cast(T*) this._data.ptr) = val;
+        *(cast(Unqual!T*) this._data.ptr) = val;
     }
 
     this(T)(T val) if (is(T == struct)) {
