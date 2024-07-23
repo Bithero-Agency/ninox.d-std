@@ -854,6 +854,10 @@ struct Variant {
     }
 
     @property bool isCallable() const {
+        if (!this.hasValue) {
+            return false;
+        }
+
         return this._handler(Op.isCallable, null, null, null);
     }
 
@@ -913,6 +917,10 @@ struct Variant {
     }
 
     @property bool isIndexable() const {
+        if (!this.hasValue) {
+            return false;
+        }
+
         return this._handler(Op.index, null, null, null);
     }
 
