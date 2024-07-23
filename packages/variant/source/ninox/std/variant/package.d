@@ -955,6 +955,24 @@ unittest {
     assert(v.isTruthy);
 }
 
+/// Test const struct & not possible to cast const-ness away
+unittest {
+    struct S { int i; }
+    const S s = S(42);
+
+    auto v = Variant(s);
+    assert(v.hasValue);
+    assert(v.get!(const S) == S(42));
+
+    try {
+        v.get!S;
+        assert(0);
+    } catch (VariantException e) {
+        import std.string : startsWith;
+        assert(e.message.startsWith("Could not retrieve value for specified type"));
+    }
+}
+
 /// Test class
 unittest {
     class C {
