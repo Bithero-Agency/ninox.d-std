@@ -291,12 +291,15 @@ struct Variant {
                 import std.conv : to;
                 static if (
                     is(T == struct)
-                    || isFunctionPointer!T || isDelegate!T || isPointer!T
                     || is(T == class) || is(T == interface)
                     || isArray!T || isAssociativeArray!T
                     || isScalarType!T
                 ) {
                     T* src = cast(T*) (cast(void[])data).ptr;
+                    *(cast(string*) dest) = (*src).to!string;
+                    return true;
+                } else static if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
+                    void** src = cast(void**) (cast(void[])data).ptr;
                     *(cast(string*) dest) = (*src).to!string;
                     return true;
                 } else {
