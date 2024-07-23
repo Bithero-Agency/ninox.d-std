@@ -58,6 +58,7 @@ struct Variant {
         isCallable,
         iterate,
         index,
+        equals,
     }
 
     private static bool handler(T)(Op op, void* dest, void* arg, const void[] data) {
@@ -419,6 +420,42 @@ struct Variant {
                     return false;
                 }
             }
+
+            case Op.equals:
+                auto other = cast(Variant*) arg;
+                auto otherTy = other.type;
+
+                // For all direct types
+                if (otherTy == typeid(T)) {
+                    T* src = cast(T*) data.ptr;
+                    T* rhs = cast(T*) other._data.ptr;
+                    return (*rhs == *src);
+                }
+
+                // Try to convert this to other...
+                Variant temp;
+                temp._data = new void[ other._data.length ];
+                if (tryPut(cast(void*) temp._data.ptr, cast(TypeInfo) otherTy, (cast(void[])data).ptr, true)) {
+                    temp._handler = other._handler;
+                    return temp.opEquals(*other);
+                }
+
+                // Try converting other to this...
+                temp._data = new void[ data.length ];
+                if (
+                    //tryPut(cast(void*) temp._data.ptr, typeid(T), other._data.ptr, true)
+                    other._handler(Op.tryPut, temp._data.ptr, cast(void*) typeid(T), cast(const void[]) other._data)
+                ) {
+                    T* src = cast(T*) data.ptr;
+                    static if (is(T == struct)) {
+                        T* rhs = *(cast(T**) temp._data.ptr);
+                    } else {
+                        T* rhs = cast(T*) temp._data.ptr;
+                    }
+                    return (*rhs == *src);
+                }
+
+                return false;
         }
     }
 
@@ -814,6 +851,24 @@ struct Variant {
 
     @property bool isIndexable() const {
         return this._handler(Op.index, null, null, null);
+    }
+
+    // -------------------- comparison --------------------
+
+    bool opEquals(T)(T other) const {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to execute opEquals on Variant: holds no data"
+            );
+        }
+
+        static if (is(T == Variant)) {
+            alias arg = other;
+        }
+        else {
+            auto arg = Variant(other);
+        }
+        return this._handler(Op.equals, null, cast(void*) &arg, this._data);
     }
 
 }
@@ -1446,4 +1501,25 @@ unittest {
     assert(v.isIndexable);
     assert(v[12].get!int == 24);
     assert(v.doIndex(Variant(12)).get!int == 24);
+}
+
+/// Test opEqual
+unittest {
+    auto v = Variant(11);
+    assert(v == 11);
+
+    v = Variant(cast(const size_t) 22);
+    assert(v == 22);
+
+    struct S1 { int i; }
+    v = Variant(S1(42));
+    assert(v == S1(42));
+
+    const S1 s = S1(42);
+    v = Variant(s);
+    assert(v == S1(42));
+
+    auto fn1 = () { return 42; };
+    v = Variant(fn1);
+    assert(v == fn1);
 }
