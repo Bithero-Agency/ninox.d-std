@@ -249,3 +249,30 @@ unittest {
     }
     assert(isIndexable!S4);
 }
+
+/** 
+ * Applies currying to an template.
+ * 
+ * Params:
+ *   tmpl = The template to curry.
+ *   Args = The arguments to supply.
+ */
+template Curry(alias tmpl, Args...) {
+    template Curry(Rest...) {
+        alias Curry = tmpl!(Args, Rest);
+    }
+}
+
+unittest {
+    auto fn1(string a, string b)() {
+        return a ~ b;
+    }
+    alias fn2 = Curry!(fn1, "a");
+    assert(fn2!("b")() == "ab");
+
+    template T1(string a, string b) {
+        enum T1 = a ~ b;
+    }
+    alias T2 = Curry!(T1, "a");
+    assert(T2!("b") == "ab");
+}
