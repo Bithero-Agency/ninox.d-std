@@ -383,6 +383,58 @@ unittest {
 }
 
 /** 
+ * Retruns a `AliasSeq` containing all derived members wrapped in a `MemberHandler` for easy access.
+ * 
+ * Each element of the result a instanciated template with the following member symbols:
+ *  - `name`: The string of the members name.
+ *  - `type`: Alias for the members type.
+ *  - `index`: The index of the member, as they appeared in `__traits(derivedMembers, T)`.
+ * 
+ *  - `has_UDA`: Template which accepts a single argument `attr` to test if the field has the attribute / UDA.
+ *               Equivalent to `hasUDA!(Member, attr)`.
+ *  - `get_UDAs`: Template which accepts a single argument `attr` to retrieve all attributes / UDAs of that type from the field.
+ *                Equivalent to `getUDAs!(Member, attr)`.
+ * 
+ *  - `compiles`: A boolean value if access to the field compiles.
+ *                Equivalent to `__traits(compiles, mixin("T." ~ Member.Name))`.
+ *  - `raw`: The underlying member value, i.e. `__traits(getMember, T, Member.Name)`.
+ * 
+ * Params:
+ *   T = The type whose derived members should be returned.
+ */
+template GetDerivedMembers(alias T) {
+    template MemberHandler(size_t i, alias E) {
+        enum name = E;
+        alias type = typeof(__traits(getMember, T, E));
+        enum index = i;
+        template has_UDA(alias attr) {
+            import std.traits : hasUDASys = hasUDA;
+            alias has_UDA = hasUDASys!(__traits(getMember, T, E), attr);
+        }
+        template get_UDAs(alias attr) {
+            import std.traits : getUDAsSys = getUDAs;
+            alias get_UDAs = getUDAsSys!(__traits(getMember, T, E), attr);
+        }
+        enum compiles = __traits(compiles, mixin("T." ~ E));
+        alias raw = __traits(getMember, T, E);
+    }
+    alias GetDerivedMembers = staticMapWithIndex!(MemberHandler, __traits(derivedMembers, T));
+}
+
+unittest {
+    struct MyUDA {}
+    struct S {
+        @MyUDA
+        void f() {}
+    }
+
+    alias members = GetDerivedMembers!S;
+    static assert(members[0].name == "f");
+    static assert(is(members[0].type == function));
+    static assert(members[0].has_UDA!MyUDA);
+}
+
+/** 
  * Like `std.meta.staticMap`, but also passes the index to the callback.
  * 
  * Params:
