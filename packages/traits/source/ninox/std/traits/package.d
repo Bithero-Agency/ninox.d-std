@@ -381,3 +381,32 @@ unittest {
     enum Msg = [ MapFields!(S, MyHandler) ].join("\n");
     static assert(Msg, "Field i has type int with @MyUDA(s = hello)\nField j has type long\n");
 }
+
+/** 
+ * Like `std.meta.staticMap`, but also passes the index to the callback.
+ * 
+ * Params:
+ *   callback = The template to call with `!(i, arg)`.
+ *   args = The arguments to map.
+ */
+template staticMapWithIndex(alias callback, args...)
+{
+    import std.meta : AliasSeq;
+    alias staticMapWithIndex = AliasSeq!();
+    static foreach (i, arg; args)
+        staticMapWithIndex = AliasSeq!(staticMapWithIndex, callback!(i, arg));
+}
+
+unittest {
+    import std.meta : AliasSeq;
+    alias list = AliasSeq!( "a", "b" );
+
+    template Mapper(size_t i, alias elem)
+    {
+        import std.conv : to;
+        enum Mapper = i.to!string ~ "=>" ~ elem;
+    }
+    alias res = staticMapWithIndex!(Mapper, list);
+    static assert(res[0] == "0=>a");
+    static assert(res[1] == "1=>b");
+}
