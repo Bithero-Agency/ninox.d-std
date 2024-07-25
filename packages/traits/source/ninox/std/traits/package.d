@@ -276,3 +276,108 @@ unittest {
     alias T2 = Curry!(T1, "a");
     assert(T2!("b") == "ab");
 }
+
+/*
+ * Retruns a `AliasSeq` containing all fields wrapped in a `FieldHandler` for easy access.
+ * 
+ * Each element of the result a instanciated template with the following member symbols:
+ *  - `name`: The string of the fields name, equivalent to `T.tupleof[x].stringof`.
+ *  - `type`: Alias for the fields type, equivalent to `typeof(T.tupleof[x])`.
+ *  - `index`: The index of the field, i.e. `x` in `T.tupleof[x]`.
+ * 
+ *  - `has_UDA`: Template which accepts a single argument `attr` to test if the field has the attribute / UDA.
+ *               Equivalent to `hasUDA!(T.tupleof[x], attr)`.
+ *  - `get_UDAs`: Template which accepts a single argument `attr` to retrieve all attributes / UDAs of that type from the field.
+ *                Equivalent to `getUDAs!(T.tupleof[x], attr)`.
+ * 
+ *  - `compiles`: A boolean value if access to the field compiles.
+ *                Equivalent to `__traits(compiles, mixin("T." ~ T.tupleof[x].stringof))`.
+ *  - `member`: Get the member, equivalent to `__traits(getMember, T, T.tupleof[x].stringof)`.
+ *  - `raw`: The raw element this wrapper was constructed from, i.e. `T.tupleof[x]`.
+ */
+template GetFields(alias T) {
+    import std.meta : AliasSeq;
+    template FieldHandler(size_t i, alias E) {
+        enum name = E.stringof;
+        alias type = typeof(E);
+        enum index = i;
+        template has_UDA(alias attr) {
+            import std.traits : hasUDASys = hasUDA;
+            alias has_UDA = hasUDASys!(E, attr);
+        }
+        template get_UDAs(alias attr) {
+            import std.traits : getUDAsSys = getUDAs;
+            alias get_UDAs = getUDAsSys!(E, attr);
+        }
+        enum compiles = __traits(compiles, mixin("T." ~ E.stringof));
+        alias member = __traits(getMember, T, E.stringof);
+        alias raw = E;
+    }
+    alias GetFields = AliasSeq!();
+    static foreach (i, arg; T.tupleof)
+        GetFields = AliasSeq!(GetFields, FieldHandler!(i, arg));
+}
+
+/** 
+ * Applies for every field in `T` the handler template `Handler`.
+ * 
+ * This is done by first retrieveing all fields with `ninox.std.traits.GetFields!T`,
+ * and mapping that afterwards with `std.meta.staticMap!(Handler, Fields)`.
+ * 
+ * Params:
+ *   T = The type to map fields for.
+ *   Handler = The handler to call for each field.
+ *   Default = A default value if the `AliasSeq` produced contains no values.
+ * 
+ * Example:
+-----------------
+struct MyUDA { string s; }
+struct S {
+    @MyUDA("hello") int i;
+    long j;
+}
+
+template MyHandler(alias Field) {
+    static if (Field.has_UDA!MyUDA) {
+        enum MyHandler = "Field " ~ Field.name ~ " has type " ~ Field.type.stringof ~ " with @MyUDA(s = " ~ Field.get_UDAs!MyUDA[0].s ~ ")";
+    }
+    else {
+        enum MyHandler = "Field " ~ Field.name ~ " has type " ~ Field.type.stringof;
+    }
+}
+
+import std.string : join;
+enum Msg = [ MapFields!(S, MyHandler) ].join("\n");
+static assert(Msg, "Field i has type int with @MyUDA(s = hello)\nField j has type long\n");
+-----------------
+ */
+template MapFields(alias T, alias Handler, alias Default = imported!"std.meta".AliasSeq!()) {
+    import std.meta : staticMap;
+    alias _tmp = staticMap!(Handler, GetFields!T);
+    static if (_tmp.length < 1) {
+        alias MapFields = Default;
+    } else {
+        alias MapFields = _tmp;
+    }
+}
+
+unittest {
+    struct MyUDA { string s; }
+    struct S {
+        @MyUDA("hello") int i;
+        long j;
+    }
+
+    template MyHandler(alias Field) {
+        static if (Field.has_UDA!MyUDA) {
+            enum MyHandler = "Field " ~ Field.name ~ " has type " ~ Field.type.stringof ~ " with @MyUDA(s = " ~ Field.get_UDAs!MyUDA[0].s ~ ")";
+        }
+        else {
+            enum MyHandler = "Field " ~ Field.name ~ " has type " ~ Field.type.stringof;
+        }
+    }
+
+    import std.string : join;
+    enum Msg = [ MapFields!(S, MyHandler) ].join("\n");
+    static assert(Msg, "Field i has type int with @MyUDA(s = hello)\nField j has type long\n");
+}
