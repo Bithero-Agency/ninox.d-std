@@ -716,7 +716,7 @@ struct Variant {
      *         or the requested type is not compatible with the value held.
      * Returns: A reference to the struct
      */
-    @property ref T get(T)() const @trusted if (is(T == struct)) {
+    @property ref T get(T)() const @trusted if (is(T == struct) && !is(T == Variant)) {
         if (!this.hasValue) {
             throw new VariantException(
                 "Unable to retrieve value from Variant: holds no data"
@@ -729,6 +729,19 @@ struct Variant {
             throw new VariantException("Could not retrieve value for specified type: " ~ this.type.to!string ~ " != " ~ typeid(T).to!string);
         }
         return *ptr;
+    }
+
+    /** 
+     * Tries to return the value held by the Variant as a Variant.
+     * Note: this effectively returns itself.
+     * 
+     * Returns: A variant containing the current value.
+     */
+    @property T get(T : Variant)() const @trusted {
+        Variant v;
+        v._data = cast(void[]) this._data;
+        v._handler = this._handler;
+        return v;
     }
 
     /** 
