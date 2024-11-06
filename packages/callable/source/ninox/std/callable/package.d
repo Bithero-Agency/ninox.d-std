@@ -82,6 +82,12 @@ struct Callable(RetT, ParamsT...) {
         return this;
     }
 
+    /// Checks if the callable is set or not.
+    pragma(inline) @property bool isSet() const pure nothrow @nogc @safe => this.kind != Kind.NO;
+
+    /// Converts this callable to an boolean state, describing wether or not it is set.
+    bool opCast(T : bool)() const pure nothrow @nogc @safe => this.kind != Kind.NO;
+
 private:
     enum Kind { NO, FN, DG }
     Kind kind = Kind.NO;
@@ -111,4 +117,14 @@ unittest {
     C c = (ref int a) { a *= 2; };
 
     int i = 12; c(i); assert(i == 24);
+}
+
+unittest {
+    Callable!(void, int) a;
+    assert(!a.isSet);
+    assert(!a);
+
+    a = (int i) {};
+    assert(a.isSet);
+    assert(a);
 }
