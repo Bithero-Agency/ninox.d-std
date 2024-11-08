@@ -403,6 +403,7 @@ unittest {
  *   T = The type whose derived members should be returned.
  */
 template GetDerivedMembers(alias T) {
+    import std.meta : Filter;
     template MemberHandler(size_t i, alias E) {
         enum name = E;
         alias type = typeof(__traits(getMember, T, E));
@@ -418,7 +419,8 @@ template GetDerivedMembers(alias T) {
         enum compiles = __traits(compiles, mixin("T." ~ E));
         alias raw = __traits(getMember, T, E);
     }
-    alias GetDerivedMembers = staticMapWithIndex!(MemberHandler, __traits(derivedMembers, T));
+    enum isMember(alias E) = !is(__traits(getMember, T, E));
+    alias GetDerivedMembers = staticMapWithIndex!(MemberHandler, Filter!(isMember, __traits(derivedMembers, T)));
 }
 
 unittest {
