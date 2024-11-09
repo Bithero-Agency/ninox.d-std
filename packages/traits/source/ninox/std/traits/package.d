@@ -404,9 +404,15 @@ unittest {
  */
 template GetDerivedMembers(alias T) {
     import std.meta : Filter;
+    import std.traits : isFunction;
     template MemberHandler(size_t i, alias E) {
         enum name = E;
-        alias type = typeof(__traits(getMember, T, E));
+        static if (isFunction!(__traits(getMember, T, E))) {
+            enum raw = &__traits(getMember, T, E);
+        } else {
+            alias raw = __traits(getMember, T, E);
+        }
+        alias type = typeof(raw);
         enum index = i;
         template has_UDA(alias attr) {
             import std.traits : hasUDASys = hasUDA;
@@ -417,7 +423,6 @@ template GetDerivedMembers(alias T) {
             alias get_UDAs = getUDAsSys!(__traits(getMember, T, E), attr);
         }
         enum compiles = __traits(compiles, mixin("T." ~ E));
-        alias raw = __traits(getMember, T, E);
     }
     enum isMember(alias E) = !is(__traits(getMember, T, E));
     alias GetDerivedMembers = staticMapWithIndex!(MemberHandler, Filter!(isMember, __traits(derivedMembers, T)));
