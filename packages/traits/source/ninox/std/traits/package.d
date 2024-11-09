@@ -423,6 +423,12 @@ template GetDerivedMembers(alias T) {
             alias get_UDAs = getUDAsSys!(__traits(getMember, T, E), attr);
         }
         enum compiles = __traits(compiles, mixin("T." ~ E));
+        static if (isFunction!raw) {
+            alias overloads = __traits(getOverloads, T, E);
+            template filterOverloads(alias pred) {
+                alias filterOverloads = Filter!(pred, overloads);
+            }
+        }
     }
     enum isMember(alias E) = !is(__traits(getMember, T, E));
     alias GetDerivedMembers = staticMapWithIndex!(MemberHandler, Filter!(isMember, __traits(derivedMembers, T)));
