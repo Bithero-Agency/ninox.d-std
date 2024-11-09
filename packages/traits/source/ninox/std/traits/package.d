@@ -250,6 +250,50 @@ unittest {
     assert(isIndexable!S4);
 }
 
+/*
+ * Returns the type op the `opIndex` function.
+ * 
+ * Params:
+ *   indexable = The indexable type.
+ */
+/*template opIndexType(alias indexable)
+    if (isIndexable!indexable)
+{
+    pragma(msg, "AAA: ", indexable);
+    static if (is(typeof(&indexable.opIndex) == delegate)) {
+        pragma(msg, "AAA1: ", typeof(&indexable.opIndex));
+        alias opIndexType = typeof(&indexable.opIndex);
+    }
+    else static if (is(typeof(&indexable.opIndex) V : V*) && is(V == function)) {
+        pragma(msg, "AAA2: ", typeof(&indexable.opIndex));
+        alias opIndexType = typeof(&indexable.opIndex);
+    }
+    else static if (is(typeof(&indexable.opIndex!()) V : V*) && is(V == function)) {
+        pragma(msg, "AAA3: ", typeof(&indexable.opIndex!()));
+        alias opIndexType = typeof(&indexable.opIndex!());
+    }
+    else {
+        static assert(0, "Use ElementType for arrays and KeyType for associative arrays");
+    }
+}
+
+unittest {
+    struct S1 {
+        void opIndex(int a) {}
+    }
+    static assert(is(opIndexType!S1 == void function(int)));
+
+    struct S2 {
+        static void opIndex(int a) {}
+    }
+    static assert(is(opIndexType!S2 == void function(int)));
+
+    struct S3 {
+        void opIndex(P...)(P params) {}
+    }
+    static assert(is(opIndexType!S3 == void function(int)));
+} */
+
 /** 
  * Applies currying to an template.
  * 
@@ -408,11 +452,11 @@ template GetDerivedMembers(alias T) {
     template MemberHandler(size_t i, alias E) {
         enum name = E;
         static if (isFunction!(__traits(getMember, T, E))) {
-            enum raw = &__traits(getMember, T, E);
+            enum _raw = &__traits(getMember, T, E);
         } else {
-            alias raw = __traits(getMember, T, E);
+            alias _raw = __traits(getMember, T, E);
         }
-        alias type = typeof(raw);
+        alias type = typeof(_raw);
         enum index = i;
         template has_UDA(alias attr) {
             import std.traits : hasUDASys = hasUDA;
@@ -423,6 +467,7 @@ template GetDerivedMembers(alias T) {
             alias get_UDAs = getUDAsSys!(__traits(getMember, T, E), attr);
         }
         enum compiles = __traits(compiles, mixin("T." ~ E));
+        alias raw = __traits(getMember, T, E);
         static if (isFunction!raw) {
             alias overloads = __traits(getOverloads, T, E);
             template filterOverloads(alias pred) {
@@ -442,6 +487,7 @@ unittest {
     }
 
     alias members = GetDerivedMembers!S;
+    pragma(msg, members[0].type);
     static assert(members[0].name == "f");
     static assert(is(members[0].type == function));
     static assert(members[0].has_UDA!MyUDA);
