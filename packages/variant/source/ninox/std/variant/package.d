@@ -148,6 +148,10 @@ struct Variant {
                         *(cast(T*) dest) = *(cast(T*) data);
                     }
                 }
+                else static if (is(T == typeof(null))) {
+                    // Note: dunno if this works...
+                    *(cast(Unqual!TC*) dest) = null;
+                }
 
                 return true;
             }
@@ -179,6 +183,9 @@ struct Variant {
             else static if (isFunctionPointer!T || isDelegate!T || isPointer!T) {
                 auto d = cast(T*) data.ptr;
                 return (*d) !is null;
+            }
+            else static if (is(T == typeof(null))) {
+                return false;
             }
         }
 
@@ -559,6 +566,10 @@ struct Variant {
         }
     }
 
+    this(T : typeof(null))(T val) {
+        this._handler = &handler!T;
+    }
+
     // -------------------- opAssign --------------------
 
     auto opAssign(Variant var) {
@@ -618,6 +629,12 @@ struct Variant {
             *(cast(T*) this._data.ptr) = val;
         }
 
+        return this;
+    }
+
+    auto opAssign(T : typeof(null))(T val) {
+        this._handler = &handler!T;
+        this._data = null;
         return this;
     }
 
@@ -790,6 +807,28 @@ struct Variant {
             throw new VariantException("Could not retrieve value for specified type: " ~ this.type.to!string ~ " != " ~ typeid(T).to!string);
         }
         return val;
+    }
+
+    /** 
+     * Tries to return the value held by the Variant.
+     * 
+     * Throws: A <c>VariantException</c> if either the variant holds no value,
+     *         or the requested type is not compatible with the value held.
+     * Returns: The value requested
+     */
+    @property T get(T)() const @trusted if (is(T == typeof(null))) {
+        if (!this.hasValue) {
+            throw new VariantException(
+                "Unable to retrieve value from Variant: holds no data"
+            );
+        }
+
+        T ptr = null;
+        if (!this._handler(Op.tryPut, cast(void*) &ptr, cast(void*) typeid(T), this._data)) {
+            import std.conv : to;
+            throw new VariantException("Could not retrieve value for specified type: " ~ this.type.to!string ~ " != " ~ typeid(T).to!string);
+        }
+        return null;
     }
 
     // -------------------- lookupMember --------------------
@@ -1302,6 +1341,18 @@ unittest {
         import std.string : startsWith;
         assert(e.message.startsWith("Could not retrieve value for specified type"));
     }
+}
+
+/// Test null
+unittest {
+    Variant v = null;
+    assert(v.hasValue);
+    assert(v.type == typeid(typeof(null)));
+
+    assert(v.get!(void*) is null);
+    assert(v.get!(typeof(null)) == null);
+
+    v = null;
 }
 
 /// Test assign
