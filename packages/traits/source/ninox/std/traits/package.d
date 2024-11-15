@@ -521,3 +521,27 @@ unittest {
     static assert(res[0] == "0=>a");
     static assert(res[1] == "1=>b");
 }
+
+/**
+ * Like `__traits(hasMember, T, name)`, but uses `__traits(derivedMembers, T)` instead of all members.
+ * 
+ * Params:
+ *   T = The type to check
+ *   name = The member name to check
+ */
+template hasDerivedMember(T, string name) {
+    import std.meta : anySatisfy;
+    enum checkName(string memberName) = memberName == name;
+    alias members = __traits(derivedMembers, T);
+    enum hasDerivedMember = anySatisfy!(checkName, members);
+}
+
+unittest {
+    class Base {
+        void foo() {}
+    }
+    class Derived : Base {}
+
+    assert(hasDerivedMember!(Base, "foo"));
+    assert(!hasDerivedMember!(Derived, "foo"));
+}
