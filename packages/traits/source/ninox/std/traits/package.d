@@ -489,7 +489,8 @@ unittest {
     alias members = GetDerivedMembers!S;
     pragma(msg, members[0].type);
     static assert(members[0].name == "f");
-    static assert(is(members[0].type == function));
+    import std.traits : isFunction;
+    static assert(isFunction!(members[0].raw));
     static assert(members[0].has_UDA!MyUDA);
 }
 
