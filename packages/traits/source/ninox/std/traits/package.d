@@ -450,33 +450,42 @@ template GetDerivedMembers(alias T) {
     import std.meta : Filter;
     import std.traits : isFunction;
     template MemberHandler(size_t i, alias E) {
-        enum name = E;
-        static if (isFunction!(__traits(getMember, T, E))) {
-            enum _raw = &__traits(getMember, T, E);
+        enum name = __traits(identifier, E);
+        static if (isFunction!(__traits(getMember, T, name))) {
+            enum _raw = &E;
         } else {
-            alias _raw = __traits(getMember, T, E);
+            alias _raw = __traits(getMember, T, name);
         }
         alias type = typeof(_raw);
         enum index = i;
         template has_UDA(alias attr) {
             import std.traits : hasUDASys = hasUDA;
-            alias has_UDA = hasUDASys!(__traits(getMember, T, E), attr);
+            alias has_UDA = hasUDASys!(__traits(getMember, T, name), attr);
         }
         template get_UDAs(alias attr) {
             import std.traits : getUDAsSys = getUDAs;
-            alias get_UDAs = getUDAsSys!(__traits(getMember, T, E), attr);
+            alias get_UDAs = getUDAsSys!(__traits(getMember, T, name), attr);
         }
-        enum compiles = __traits(compiles, mixin("T." ~ E));
-        alias raw = __traits(getMember, T, E);
+        enum compiles = __traits(compiles, mixin("T." ~ name));
+        alias raw = __traits(getMember, T, name);
         static if (isFunction!raw) {
-            alias overloads = __traits(getOverloads, T, E);
+            alias overloads = __traits(getOverloads, T, name);
             template filterOverloads(alias pred) {
                 alias filterOverloads = Filter!(pred, overloads);
             }
         }
     }
     enum isMember(alias E) = !is(__traits(getMember, T, E));
-    alias GetDerivedMembers = staticMapWithIndex!(MemberHandler, Filter!(isMember, __traits(derivedMembers, T)));
+    template expandMember(alias E) {
+        static if (isFunction!(__traits(getMember, T, E))) {
+            alias expandMember = __traits(getOverloads, T, E);
+        } else {
+            alias expandMember = __traits(getMember, T, E);
+        }
+    }
+    import std.meta : staticMap;
+    alias __members = staticMap!(expandMember, __traits(derivedMembers, T));
+    alias GetDerivedMembers = staticMapWithIndex!(MemberHandler, Filter!(isMember, __members));
 }
 
 unittest {
@@ -492,6 +501,16 @@ unittest {
     import std.traits : isFunction;
     static assert(isFunction!(members[0].raw));
     static assert(members[0].has_UDA!MyUDA);
+}
+
+unittest {
+    static class C {
+        void a() {}
+        void a(int) {}
+    }
+
+    alias members = GetDerivedMembers!C;
+    static assert(members.length == 2);
 }
 
 /** 
