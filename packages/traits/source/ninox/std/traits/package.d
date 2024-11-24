@@ -475,7 +475,7 @@ template GetDerivedMembers(alias T) {
             }
         }
     }
-    enum isMember(alias E) = !is(__traits(getMember, T, E));
+    enum isMember(alias E) = !is(E);
     template expandMember(alias E) {
         static if (isFunction!(__traits(getMember, T, E))) {
             alias expandMember = __traits(getOverloads, T, E);
