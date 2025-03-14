@@ -514,6 +514,84 @@ unittest {
 }
 
 /** 
+ * Returns a `AliasSeq` containing all members wrapped in a `MemberHandler` for easy access.
+ * 
+ * Each element of the result a instanciated template with the following member symbols:
+ *  - `name`: The string of the members name.
+ *  - `type`: Alias for the members type.
+ *  - `index`: The index of the member, as they appeared in `__traits(allMembers, T)`.
+ * 
+ *  - `has_UDA`: Template which accepts a single argument `attr` to test if the field has the attribute / UDA.
+ *               Equivalent to `hasUDA!(Member, attr)`.
+ *  - `get_UDAs`: Template which accepts a single argument `attr` to retrieve all attributes / UDAs of that type from the field.
+ *                Equivalent to `getUDAs!(Member, attr)`.
+ * 
+ *  - `compiles`: A boolean value if access to the field compiles.
+ *                Equivalent to `__traits(compiles, mixin("T." ~ Member.Name))`.
+ *  - `raw`: The underlying member value, i.e. `__traits(getMember, T, Member.Name)`.
+ * 
+ * Params:
+ *   T = The type whose members should be returned.
+ */
+template GetAllMembers(alias T) {
+    import std.meta : Filter;
+    import std.traits : isFunction;
+    template MemberHandler(size_t i, alias E) {
+        enum name = __traits(identifier, E);
+        static if (isFunction!(__traits(getMember, T, name))) {
+            enum _raw = &E;
+        } else {
+            alias _raw = __traits(getMember, T, name);
+        }
+        alias type = typeof(_raw);
+        enum index = i;
+        template has_UDA(alias attr) {
+            import std.traits : hasUDASys = hasUDA;
+            alias has_UDA = hasUDASys!(__traits(getMember, T, name), attr);
+        }
+        template get_UDAs(alias attr) {
+            import std.traits : getUDAsSys = getUDAs;
+            alias get_UDAs = getUDAsSys!(__traits(getMember, T, name), attr);
+        }
+        enum compiles = __traits(compiles, mixin("T." ~ name));
+        alias raw = __traits(getMember, T, name);
+        static if (isFunction!raw) {
+            alias overloads = __traits(getOverloads, T, name);
+            template filterOverloads(alias pred) {
+                alias filterOverloads = Filter!(pred, overloads);
+            }
+        }
+    }
+    enum isMember(alias E) = !is(E);
+    template expandMember(alias E) {
+        static if (isFunction!(__traits(getMember, T, E))) {
+            alias expandMember = __traits(getOverloads, T, E);
+        } else {
+            alias expandMember = __traits(getMember, T, E);
+        }
+    }
+    import std.meta : staticMap;
+    alias __members = staticMap!(expandMember, __traits(allMembers, T));
+    alias GetAllMembers = staticMapWithIndex!(MemberHandler, Filter!(isMember, __members));
+}
+
+unittest {
+    struct MyUDA {}
+    class S1 {
+        @MyUDA
+        void f() {}
+    }
+    class S2 : S1 {}
+
+    alias members = GetAllMembers!S2;
+    pragma(msg, members[0].type);
+    static assert(members[0].name == "f");
+    import std.traits : isFunction;
+    static assert(isFunction!(members[0].raw));
+    static assert(members[0].has_UDA!MyUDA);
+}
+
+/** 
  * Like `std.meta.staticMap`, but also passes the index to the callback.
  * 
  * Params:
